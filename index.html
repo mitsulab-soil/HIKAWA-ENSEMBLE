@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>氷川重奏 HIKAWA ENSEMBLE ─ mitsulab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/cesium@1.144.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.144.0/Build/Cesium/Cesium.js"></script>
+<style>
+  :root{
+    --ink:#f2f8fc; --sub:#cfe2ec; --dim:#93b2c2;
+    --v-bldg:#dbe7ee; --v-life:#5cc8e0; --v-tree:#7fd39a; --v-hist:#e8965c; --v-cult:#e8cf5c;
+    --glass:rgba(7,15,22,.60); --glass2:rgba(7,15,22,.88);
+    --line-soft:rgba(150,195,215,.16);
+    --serif:"Shippori Mincho","Noto Serif JP",serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;-webkit-text-size-adjust:100%}
+  body{background:#03080c;color:var(--ink);font-family:var(--serif)}
+  a{color:var(--v-life);text-decoration:none}
+  b{font-weight:600}
+
+  #cesium{position:fixed;inset:0}
+  #cesium .cesium-viewer-bottom{display:none}   /* 出典は出典シートに正式表記 */
+
+  .glass{background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+         border:1px solid var(--line-soft);border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.42)}
+
+  /* ── 左の縦の流れ（題・レイヤ・カードが一本の列。重ならない） ── */
+  #hudLeft{position:fixed;left:18px;top:16px;z-index:22;width:min(340px,calc(100vw - 36px));
+           max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:10px;
+           overflow-y:auto;scrollbar-width:thin;pointer-events:none}
+  #hudLeft > *{pointer-events:auto;flex:none}
+  #hudTitle{padding:14px 20px 12px}
+  #hudTitle h1{font-size:clamp(20px,3.4vw,27px);font-weight:600;letter-spacing:.22em;line-height:1.14}
+  #hudTitle .en{font-family:var(--mono);font-size:10px;letter-spacing:.30em;color:var(--sub);margin-top:7px;opacity:.92}
+  #hudTitle .by{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim);
+                margin-top:9px;padding-top:8px;border-top:1px solid var(--line-soft)}
+
+  /* ── 五つのレイヤ ── */
+  #hudVoices{padding:11px 12px;display:flex;flex-direction:column;gap:3px}
+  #hudVoices .hd{font-family:var(--mono);font-size:9px;letter-spacing:2.5px;color:var(--dim);padding:0 6px 5px}
+  .voice{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub);cursor:pointer;background:none;
+         border:1px solid transparent;border-radius:9px;padding:6px 11px;white-space:nowrap;
+         font-family:var(--serif);text-align:left;letter-spacing:.08em;transition:opacity .2s,border-color .2s}
+  .voice:hover{border-color:var(--line-soft);color:var(--ink)}
+  .voice .dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 9px currentColor}
+  .voice[aria-pressed="false"]{opacity:.3}
+  .voice[aria-pressed="false"] .dot{box-shadow:none}
+  .voice .n{font-family:var(--mono);font-size:9.5px;color:var(--dim);margin-left:auto;padding-left:12px}
+
+  /* ── 視点（右下） ── */
+  #hudCams{position:fixed;right:18px;bottom:18px;z-index:20;padding:9px;display:flex;flex-direction:column;gap:5px}
+  .cbtn{font-family:var(--serif);font-size:12.5px;letter-spacing:.14em;color:var(--sub);background:none;
+        border:1px solid var(--line-soft);border-radius:9px;padding:7px 15px;cursor:pointer;white-space:nowrap}
+  .cbtn:hover{color:var(--ink);border-color:rgba(150,195,215,.4)}
+  .cbtn[aria-pressed="true"]{color:#05202a;background:var(--v-life);border-color:var(--v-life)}
+  .cbtn.small{font-family:var(--mono);font-size:10px;letter-spacing:.5px;padding:5px 11px}
+  .cbtn:disabled{opacity:.3;cursor:default}
+
+  /* ── カード（左の列の中。だから他の枠と重ならない） ── */
+  #card{position:relative;max-height:min(46vh,420px);overflow-y:auto;padding:16px 19px;display:none;
+        scrollbar-width:thin}
+  #card .k{font-family:var(--mono);font-size:9px;letter-spacing:2.5px}
+  #card h3{font-size:17px;font-weight:600;letter-spacing:.06em;margin:.3em 0 .4em;padding-right:52px}
+  #card .body{color:var(--sub);font-size:13px;line-height:1.85}
+  #card .meta{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:11px;word-break:break-all;line-height:1.75}
+  #card .close{position:absolute;right:11px;top:11px;font-family:var(--mono);font-size:11px;color:var(--dim);
+               cursor:pointer;border:none;background:none;padding:2px 5px}
+  #card .close:hover{color:var(--ink)}
+  #card img{max-width:190px;border-radius:7px;display:block;margin:9px 0 3px}
+  #card .at{font-family:var(--mono);font-size:8.5px;color:var(--dim)}
+  .badge{display:inline-block;font-family:var(--mono);font-size:9px;border:1px solid currentColor;border-radius:3px;
+         padding:1px 7px;margin-left:8px;vertical-align:2px;opacity:.85}
+  .kv{display:flex;gap:8px;border-bottom:1px dotted var(--line-soft);padding:3px 0;font-size:12.5px}
+  .kv .k2{font-family:var(--mono);font-size:10px;color:var(--dim);min-width:72px;flex:none}
+
+  /* ── 出典シート ── */
+  #srcSheet{position:fixed;inset:0;z-index:40;display:none;place-items:center;background:rgba(2,5,9,.6)}
+  #srcSheet .inner{width:min(700px,calc(100vw - 28px));max-height:80vh;overflow-y:auto;padding:24px 28px;
+                   background:var(--glass2)}
+  #srcSheet h3{font-size:12.5px;letter-spacing:.28em;color:var(--dim);font-weight:500;margin-bottom:11px}
+  #srcSheet li{font-size:11.5px;color:var(--sub);line-height:2;list-style:none}
+  #srcSheet .credit{margin-top:20px;font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:1px}
+
+  #walkHud{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:21;display:none;
+           padding:9px 16px;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+           border:1px solid var(--line-soft);border-radius:11px;text-align:center}
+  #walkHud .ln{font-size:11.5px;color:var(--sub);line-height:1.85;letter-spacing:.04em}
+  #walkHud .ln span{display:inline-block}
+  #walkHud b{color:var(--ink)}
+  /* 受信の状態。読み込み中とエラーのときだけ出て、届いたら消える */
+  /* ── ファイルを直接ひらいたときの案内（地面が出せないことを、はっきり言う） ── */
+  #openHelp{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+            padding:24px;background:rgba(3,8,12,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  #openHelp .oh-box{max-width:560px;width:100%;padding:26px 28px;border-radius:16px;
+                    max-height:calc(100vh - 48px);overflow:auto}
+  #openHelp .oh-h{font-size:19px;letter-spacing:.04em;margin-bottom:14px;color:var(--ink)}
+  #openHelp .oh-h2{font-size:13px;letter-spacing:.08em;color:var(--v-cult);margin:20px 0 8px}
+  #openHelp .oh-p{font-size:13px;line-height:1.95;color:var(--sub);margin-bottom:10px}
+  #openHelp .oh-c{font-family:var(--mono);font-size:11px;color:var(--v-life)}
+  #openHelp .oh-code{display:flex;align-items:center;gap:10px;margin:8px 0 4px;padding:9px 12px;
+                     background:rgba(3,8,12,.62);border:1px solid var(--line-soft);border-radius:8px}
+  #openHelp .oh-code code{font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--ink);
+                          word-break:break-all;flex:1}
+  #openHelp .oh-cp{flex:none;font-family:var(--serif);font-size:11px;padding:4px 11px;cursor:pointer;
+                   color:var(--ink);background:rgba(150,195,215,.12);border:1px solid var(--line-soft);
+                   border-radius:6px}
+  #openHelp .oh-cp:hover{background:rgba(150,195,215,.22)}
+  #openHelp .oh-note{font-size:11px;line-height:1.85;color:var(--dim);margin-top:16px}
+  @media (max-width:520px){
+    #openHelp{padding:12px}
+    #openHelp .oh-box{padding:18px 16px}
+    #openHelp .oh-h{font-size:16px}
+    #openHelp .oh-p{font-size:12px}
+    #openHelp .oh-code code{font-size:9.5px}
+  }
+  #hudBoot{position:fixed;left:18px;bottom:18px;z-index:19;display:none;align-items:center;gap:9px;
+           padding:8px 14px;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+           border:1px solid var(--line-soft);border-radius:10px;font-family:var(--mono);font-size:10px;
+           letter-spacing:.06em;color:var(--sub);max-width:min(420px,calc(100vw - 36px));line-height:1.6}
+  #hudBoot .sp{width:7px;height:7px;border-radius:50%;background:var(--v-life);flex:none;animation:bp 1.5s ease-in-out infinite}
+  #hudBoot.err{color:#f3cdae;border-color:rgba(232,150,92,.42)}
+  #hudBoot.err .sp{background:var(--v-hist);animation:none}
+  body.walking #hudBoot{bottom:82px}
+  @keyframes bp{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+
+  @media (max-width:860px){
+    /* 縦に積む：左の列 → 右下のボタン → 歩行の案内。互いに重ならない高さで切る */
+    /* 右上の「視点」の柱（幅 141px ＋ 右余白 8px）に、10px の間をあけて場所を空ける。
+       ⚠️ 146px では 13px 足りず、狭い窓で二つの板が重なっていた（2026-08-28 実測して修正）。 */
+    #hudLeft{left:10px;top:10px;width:calc(100vw - 169px);max-height:calc(100vh - 20px);gap:8px}
+    #hudTitle{padding:9px 14px}
+    #hudTitle h1{font-size:20px;letter-spacing:.18em}
+    #hudVoices{padding:8px 9px;gap:2px}
+    .voice{font-size:11.5px;padding:5px 9px;gap:8px}
+    #card{max-height:34vh;padding:13px 15px}
+    #hudCams{right:8px;top:10px;bottom:auto;padding:6px;gap:4px;max-height:calc(100vh - 20px);overflow-y:auto}
+    .cbtn{font-size:11px;padding:5px 10px;letter-spacing:.06em}
+    .cbtn.small{font-size:9.5px;padding:4px 8px}
+    #walkHud{bottom:10px;left:10px;right:118px;transform:none;padding:7px 11px}
+    #walkHud .ln{font-size:10px;line-height:1.7}
+    #hudBoot{left:10px;right:118px;bottom:10px;max-width:none;font-size:9px;padding:6px 11px}
+    body.walking #hudBoot{bottom:58px}
+  }
+  @media (max-width:860px) and (max-height:700px){
+    #card{max-height:26vh}
+    #hudVoices{gap:1px}
+    .voice{padding:4px 8px;font-size:11px}
+  }
+
+  /* ── 仕上げ ── */
+  #vig{position:fixed;inset:0;z-index:2;pointer-events:none;
+       background:radial-gradient(ellipse at 50% 42%,rgba(0,0,0,0) 46%,rgba(2,6,10,.38) 78%,rgba(2,6,10,.68) 100%)}
+  #hudLeft,#hudCams{animation:fadeUp .75s cubic-bezier(.2,.7,.3,1) both}
+  #hudCams{animation-delay:.12s}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  #hudCams .hd{font-family:var(--mono);font-size:8.5px;letter-spacing:2.4px;color:var(--dim);
+               padding:3px 7px 5px;text-align:right}
+  #hudCams .sep{height:1px;background:var(--line-soft);margin:4px 3px}
+  .cbtn.ic{display:flex;align-items:center;gap:9px}
+  .cbtn.ic svg{width:14px;height:14px;flex:none;opacity:.7;transition:opacity .2s}
+  .cbtn.ic:hover svg,.cbtn.ic[aria-pressed="true"] svg{opacity:1}
+  .cbtn.ic .tx{flex:1;text-align:left}
+  .cbtn.small.ic .tx{text-align:center}
+  .cbtn,.voice{transition:color .2s,border-color .2s,background .2s,opacity .2s}
+  .cbtn:focus-visible,.voice:focus-visible{outline:2px solid var(--v-life);outline-offset:2px}
+
+  #hudVoices .hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  #hudVoices .hint{font-size:8px;letter-spacing:1.4px;opacity:.62;font-weight:400}
+  #card{border-top:2px solid var(--line-soft)}
+
+  #hudLeft::-webkit-scrollbar,#card::-webkit-scrollbar,#srcSheet .inner::-webkit-scrollbar{width:6px}
+  #hudLeft::-webkit-scrollbar-thumb,#card::-webkit-scrollbar-thumb,
+  #srcSheet .inner::-webkit-scrollbar-thumb{background:rgba(150,195,215,.22);border-radius:3px}
+  ::selection{background:rgba(92,200,224,.28)}
+  @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+
+<div id="cesium"></div>
+<div id="vig"></div>
+
+<div id="hudLeft">
+  <div id="hudTitle" class="glass">
+    <h1>氷川重奏</h1>
+    <div class="en">HIKAWA ENSEMBLE</div>
+    <div class="by">by mitsulab　·　v5.1</div>
+  </div>
+
+  <div id="hudVoices" class="glass">
+    <div class="hd">五つのレイヤ<span class="hint">タップで表示／非表示</span></div>
+  </div>
+
+  <div id="card" class="glass">
+    <button class="close" id="cardClose">×</button>
+    <div class="k" id="cardK"></div>
+    <h3 id="cardT"></h3>
+    <div class="body" id="cardB"></div>
+    <div class="meta" id="cardM"></div>
+  </div>
+</div>
+
+<div id="hudCams" class="glass">
+  <div class="hd">視点</div>
+  <button class="cbtn" data-cam="sando">参道を見おろす</button>
+  <button class="cbtn" data-cam="ichinotorii">一の鳥居から</button>
+  <button class="cbtn" data-cam="shrine">杜へ</button>
+  <button class="cbtn" data-cam="minuma">見沼を望む</button>
+  <div class="sep"></div>
+  <button class="cbtn ic" id="walkBtn" aria-pressed="false" title="参道のなかへ入り、目の高さで歩く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.9"/><path d="M11 21l1.6-5.2-2.4-2.3.7-4.1"/><path d="M7.4 12.2l2.5-3.5 3-.6 2.6 2.2 2.4.8"/><path d="M14.2 15.8L17 21"/></svg><span class="tx" id="walkTx">歩く（一人称）</span></button>
+  <button class="cbtn ic" id="geoBtn" aria-pressed="false" title="この端末の中だけで現在地を描く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><path d="M12 2.6v3.1M12 18.3v3.1M2.6 12h3.1M18.3 12h3.1"/></svg><span class="tx" id="geoTx">現在地</span></button>
+  <div class="sep"></div>
+  <button class="cbtn small ic" id="playBtn" aria-pressed="true"><span class="tx" id="playTx">重奏 ▮▮</span></button>
+  <button class="cbtn small ic" id="srcBtn"><span class="tx">出典</span></button>
+</div>
+
+<div id="walkHud">
+  <div class="ln"><b>歩く</b>　<span>W/A/S/D または ↑↓←→ ＝ 前後左右</span>　<span>ドラッグ＝見まわす</span></div>
+  <div class="ln"><span>Shift＝速く</span>　<span>Q＝下がる・E＝上がる</span>　<span>「俯瞰へ戻る」で俯瞰に戻る</span></div>
+</div>
+
+<div id="hudBoot"><span class="sp"></span><span id="hudBootT">地図を受信しています</span></div>
+
+<div id="srcSheet"><div class="inner glass">
+  <h3>受信経路の一覧（出典）</h3>
+  <ul>
+    <li>・<b>建物</b>｜出典：3D都市モデル（Project PLATEAU）さいたま市（2025年度）（<a href="https://www.geospatial.jp/ckan/dataset/plateau-11100-saitama-shi-2025" target="_blank" rel="noopener">国土交通省</a>）を加工して作成。ストリーミング配信は実験的提供。⚠️ 地面を平らな球としているため、建物全体を <b>50m 押し下げて</b>その上に載せている（地表標高およそ 14m ＋ この一帯のジオイド高およそ 39m）。<b>建物どうしの高さの差は原データのまま</b>で、上下に動かしただけである。</li>
+    <li>・<b>樹木</b>｜『氷川参道の樹木調査』（氷川の杜まちづくり協議会 編／<a href="https://www.city.saitama.lg.jp/001/010/015/004/004/p014020.html" target="_blank" rel="noopener">さいたま市</a> 発行・令和4年3月改訂）の本数・樹種構成・区間別集計・巨木個票にもとづく。<b>1 本ずつの実測位置ではなく、区間ごとの本数と樹種比から起こした概略配置</b>（巨木 21 本は樹木番号から軸上距離を内挿・±30m 程度）。⚠️ <b>百分率の母数は 661 本</b>——697 は調査した延べ本数で、そのうち伐採や低木を除いた 661 本について 2011 年 3 月時点の樹種・幹周・樹高・樹形・活力度が整理されている。<b>樹高は目測の概数</b>（三角測量したのはサンプル樹木のみ）。調査対象は<b>おおむね高さ 5m 以上</b>で、参道にはこのほかに数多くの中低木がある。学名は <a href="https://www.gbif.org/" target="_blank" rel="noopener">GBIF Backbone Taxonomy</a>（CC BY 4.0）の現行の受容名。天然記念物「氷川参道の並木」11 本＝<a href="https://www.city.saitama.lg.jp/004/005/006/003/p001267_d/fil/bunkazaiitiran.pdf" target="_blank" rel="noopener">さいたま市指定文化財一覧</a>。<br>
+      <b>街の木</b>｜大宮区に <b>OSM で一本ずつ記録された樹木</b> 109 本（2026-08-28 に Overpass API で実測。参道の軸の内側にある無属性のノードは、697 本と二重に数えないよう外した）。© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>（ODbL）。⚠️ ほとんどが航空写真からの写し取りで、<b>樹種や大きさの記録を持たない</b>。持っているものだけをカードに出している。</li>
+    <li>・<b>生きもの</b>｜観察記録と写真：<a href="https://www.inaturalist.org/" target="_blank" rel="noopener">iNaturalist</a> の投稿者のみなさん（写真はレコードごとのライセンス表示に従う）。<b>飼育・栽培の記録は除いている</b>——この範囲には大宮公園小動物園が入るため、除かないと飼育個体が「杜の生きもの」として立ってしまう。範囲は<b>大宮区の全域</b>（OSM relation 1766993 の外接矩形・35.8877〜35.9258N／139.5956〜139.6496E。<b>Overpass API</b> で実測）。表示は新しい順に最大 400 件（1 頁 200 件を 2 回、1 秒あけて受ける）で、数字は「表示件数／該当総数」。2026-08-28 時点の該当総数は 452 件・242 種。<br>
+      ⚠️ <b>そのうち 54 件は、iNaturalist が位置をぼかしている記録</b>（希少種などを守るため、公開される座標が約 <b>28.6km 四方</b>に丸められる）。ぼかされた点を地図に置くと「そこに居た」という嘘になるので、<b>地図には出していない</b>。各記録の位置の精度はカードに出している。<br>
+      ⚠️ 同定は投稿者と閲覧者の判断によるもので、専門家の査定を経たものではない。「研究等級」は 2 人以上が同じ同定に達した記録という意味。</li>
+    <li>・<b>歴史</b>｜37 件それぞれに<b>出典の機関名とリンク</b>を付し、2〜4 文の解説を一次資料から起こした（2026-08-28 に全 URL の応答を実測）。<b>社伝・社記は「伝承」の記で示し、史実として断定しない。</b>照合の過程で当方の記述の誤りが見つかったものは、カードの ⚠️ に何をどう直したかを書いた（見沼通船堀 1728→<b>1731年</b>／伝・約2400年前→<b>伝・孝昭天皇3年</b>（神社の数えでは約2500年前）／大宮駅「地元の誘致運動」は学術的に見直し中／氷川公園「県内初の県営公園」→県の公式の言い方は「県営公園の中では最も長い歴史を持つ公園」／天然記念物の当初本数は資料により 29〜30 本で食い違う ほか）。<b>一次記載を確認できなかったものは書かない</b>——寿能の丸木舟・櫂・木道、大宮工場の開設月日と職員数、新都心の「5月5日」と「大宮操車場跡地」は、そのため落としてある。</li>
+    <li>・<b>文化</b>｜地物の座標：© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>（ODbL）。祭事：<a href="https://musashiichinomiya-hikawa.or.jp/saiten/" target="_blank" rel="noopener">氷川神社 祭典</a>ほか。</li>
+    <li>・<b>参道の線・境内・大宮公園の輪郭</b>｜© OpenStreetMap contributors（ODbL）。これらと駅の文字は<b>地形の下地として常に出る</b>（五つのレイヤには属さない）。<b>標高</b>｜国土地理院 <a href="https://maps.gsi.go.jp/development/elevation_s.html" target="_blank" rel="noopener">標高API</a>（5m レーザ）で参道 25 点を実測（12.4〜14.3m）。参道の光の高さに、この 1.9m の起伏をそのまま乗せている。<b>地図・写真</b>｜<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（全国最新写真〔シームレス〕。写真が届かないときだけ淡色地図へ切り替える）。</li>
+    <li>・<b>地面の形は起こしていない（平らな球の上に置いている）。</b>一度は国土地理院の<a href="https://maps.gsi.go.jp/development/demtile.html" target="_blank" rel="noopener">標高タイル</a>から起伏をつくったが、<b>標高タイルは地図タイルと同じ配信元</b>なので両方を取りに行くと接続の順番待ちを奪い合い、<b>地図が出るのが遅れた</b>。この一帯の起伏は参道で 1.9m、台地と低地の段差で 10m ほどしかなく、誇張しなければほとんど見えない。得るものより、地図が出ない害のほうが大きいと判断して外した（2026-08-28）。<br>
+      ⚠️ ただし<b>標高そのものは捨てていない</b>。参道 25 点は国土地理院 <a href="https://maps.gsi.go.jp/development/elevation_s.html" target="_blank" rel="noopener">標高API</a>（5m レーザ）で実測してあり（<b>12.4〜14.3m</b>・高低差 1.9m、最高点は南から 647m 地点）、境内は 12.6〜14.9m、見沼側は 5〜6m である。<b>地面の形として起こしていない、というだけ</b>で、数値は持っている。</li>
+    <li>・<b>現在地</b>｜ブラウザの位置情報を使う場合、<b>座標そのものはこの端末の外へ出さない</b>——外部の API に渡さず、URL にも載せず、保存もしない（この頁の 3D 空間に描くためだけに使う）。ボタンで切ると監視も止まり、頁を離れるときも止める。⚠️ ただし地図と 3D は外部から配信されるので、<b>いま見ている範囲</b>はタイルの配信元（国土地理院・PLATEAU）に伝わる。現在地へ寄ればその周辺が読み込まれる、という意味で間接的に伝わることは避けられない。</li>
+    <li>・<b>駅・鳥居の位置</b>｜© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>（ODbL・2026-08-27 に Overpass API で実測。node ID まで <code>_dev/駅_Overpass実測_2026-08-27.md</code> に控えた）。<b>鳥居と社殿の 3D は、そこに在ることを示すための象りであり、実測の形状ではない。</b>屋根の反り・組物・彩色の細部は表していない。御神体や内陣にあたるものは表さない。境内の一画は 3D 都市モデルの建物を切り抜いて、代わりにこの象りを置いている。</li>
+    <li>・<b>氷川三社の線</b>｜氷川神社・中山神社・氷川女體神社の座標から算出（方位約 120°・中山神社のずれ 0.9%）。⚠️ 天文との対応を説く解釈は一次史料を確認できていないため、線の意味は断定しない。</li>
+    <li>・<b>地球儀と 3D の描画</b>｜<a href="https://cesium.com/platform/cesiumjs/" target="_blank" rel="noopener">CesiumJS</a>（Apache-2.0）。</li>
+  </ul>
+  <div class="credit">《氷川重奏》v5.1 ── mitsulab 知覚アプリ連作・第二作（2026-08-28）　<a href="#" id="srcClose">とじる</a></div>
+</div></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   《氷川重奏》 mitsulab 2026
+   氷川を中心に、大宮の五つのレイヤ（建物・生きもの・樹木・歴史・文化）が
+   同じ杜で同時に鳴っている——その重奏を 3D の一枚に翻訳する。
+   全データは 2026-08-27 に実測（_dev/一次調査_重奏_2026-08-27.md）。
+   規律: 受信経路を名乗る／伝承は伝承と明記／届いた値を素通し／概略は概略と書く。
+   ===================================================================== */
+
+const CFG = {
+  tileset:"https://assets.cms.plateau.reearth.io/assets/3e/15c0d4-30df-4e7e-aea9-031acd9e2a1e/11100_saitama-shi_city_2025_citygml_1_op_bldg_3dtiles_11103_omiya-ku_lod1/tileset.json",
+  heightOffset:-50,   // 平らな楕円体（高さ0）の上に置くための補正＝地表標高≈14m＋ジオイド高≈39m
+  photo:"https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+  pale: "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",
+  inat: "https://api.inaturalist.org/v1/observations",
+  /* 大宮区の全域（OSM relation 1766993 の外接矩形・2026-08-28 実測）。
+     旧：氷川参道と大宮公園まわりだけ（35.896-35.922 / 139.620-139.640）→ 市街地も入れた */
+  bbox: { swlat:35.8877, swlng:139.5956, nelat:35.9258, nelng:139.6496 },
+};
+const COLORS = { bldg:"#dbe7ee", life:"#5cc8e0", tree:"#7fd39a", hist:"#e8965c", cult:"#e8cf5c" };
+
+/* ── 参道の中心線（OSM 実測・[lon, lat, 標高m]・南→北 1942m） ── */
+const SANDO = [
+  [139.63144,35.89762,12.4],[139.63149,35.89833,12.7],[139.63145,35.89906,13.1],[139.63142,35.89979,13.2],
+  [139.63138,35.90051,13.1],[139.63135,35.90124,13.1],[139.63130,35.90197,13.3],[139.63127,35.90269,13.9],
+  [139.63124,35.90342,14.3],[139.63120,35.90415,13.9],[139.63116,35.90488,13.6],[139.63113,35.90560,13.4],
+  [139.63111,35.90633,13.7],[139.63105,35.90706,13.9],[139.63102,35.90778,14.0],[139.63097,35.90851,13.9],
+  [139.63091,35.90924,13.7],[139.63084,35.90996,13.4],[139.63079,35.91069,12.9],[139.63075,35.91142,12.7],
+  [139.63070,35.91214,13.0],[139.63066,35.91287,13.2],[139.63060,35.91360,13.7],[139.63054,35.91432,14.0],
+  [139.63047,35.91505,13.8],
+];
+const SANDO_LEN = 1942;
+
+/* ── 氷川神社 社殿域・大宮公園（OSM 実測・[lon, lat]） ── */
+const KEIDAI = [[139.62997,35.91723],[139.62917,35.91693],[139.62915,35.91688],[139.62958,35.91617],
+  [139.62964,35.91616],[139.62972,35.91611],[139.62985,35.91612],[139.63037,35.91635],[139.63032,35.91642],
+  [139.63029,35.91654],[139.63038,35.91664],[139.63039,35.91666],[139.63002,35.91722]];
+const OMIYA_PARK = [[139.63216,35.92025],[139.63161,35.92104],[139.62861,35.92239],[139.62767,35.92155],
+  [139.62811,35.92109],[139.62834,35.92028],[139.62818,35.91849],[139.62857,35.91770],[139.62843,35.91734],
+  [139.62902,35.91769],[139.62999,35.91765],[139.63041,35.91749],[139.63075,35.91681],[139.63041,35.91635],
+  [139.63069,35.91616],[139.63142,35.91633],[139.63327,35.91558],[139.63503,35.91576],[139.63540,35.91683],
+  [139.63540,35.91919],[139.63286,35.92068]];
+
+/* ── 樹木の層：『氷川参道の樹木調査』（さいたま市・令和4年3月改訂）の集計にもとづく概略配置 ──
+   ⚠️ 資料の読み直し（2026-08-28）で分かった大事なこと：
+     ・**百分率の母数は 661 本**。697 は「調査した延べ本数」で、うち伐採・低木などを除いた
+       661 本について 2011 年 3 月時点の樹種・目通り・樹高・樹形・活力度が整理されている（p.3 逐語）。
+     ・**樹高は目測の概数**。三角測量したのはサンプル樹木だけ（p.2）。
+     ・対象は「**概ね高さ 5m 以上**の樹木」。参道にはこのほかに数多くの中低木がある（p.3）。
+   区間の境（軸上距離）と本数・樹種構成・幹周・樹形・活力度はすべて同資料の実数。個体の位置は実測ではない。 */
+const TREE_SECTIONS = [
+  /* half＝中心線からの横のふり幅（m）。中央公道 6m から導いた ±4.5m。
+     区間3 は都市緑地として多種を植えた区間で、資料どおり ±5〜11m にばらつかせる（直線に並べない）。
+     区間4 の終端は実測長 511.9m を採って 1907m（三の鳥居の 35m 手前で並木は終わる）。
+     kotai＝根元が踏み固められている樹木の割合（p.11）。 */
+  { name:"一の鳥居〜南大通り",           s0:0,    s1:350,  east:59,  west:70,  keyaki:0.756, half:4.5, spread:1.6, kotai:65 },
+  { name:"南大通り〜大宮中央通り",       s0:350,  s1:1061, east:124, west:115, keyaki:0.703, half:4.5, spread:1.6, kotai:53 },
+  { name:"大宮中央通り〜さいたま春日部線", s0:1061, s1:1395, east:60,  west:56,  keyaki:0.333, half:8.0, spread:6.0, kotai:17 },
+  { name:"さいたま春日部線〜三の鳥居",     s0:1395, s1:1907, east:101, west:112, keyaki:0.620, half:4.5, spread:1.6, kotai:94 },
+];
+const TREE_TOTAL = TREE_SECTIONS.reduce((a, x) => a + x.east + x.west, 0);   // ＝697（巨木 21 本はこの内数）
+const TREE_BASE  = 661;   // 百分率の母数（2011年3月時点・伐採や低木を除いた本数）
+
+/* 区間ごとの樹種構成（％・同資料 p.3／p.5〜8 の円グラフを扇形の中心角から実測。
+   区間本数で加重平均すると 9 樹種すべてが全体値と ±0.1 点で一致することを検算済み） */
+const SPECIES_BY_SECTION = [
+  /*                ケヤキ スダジイ サクラ類 クスノキ モチノキ エノキ ムクノキ スギ・ヒノキ類 その他 */
+  [75.6, 8.9, 0.8, 0.8, 1.6, 5.7, 0.8, 0.0, 5.7],
+  [70.3, 8.6, 0.9, 0.9, 4.5, 3.2, 1.8, 2.7, 7.2],
+  [33.3, 8.1, 17.1, 0.9, 0.0, 0.9, 1.8, 0.0, 37.8],
+  [62.0, 12.7, 3.4, 8.8, 3.4, 0.0, 1.5, 2.0, 6.3],
+];
+const SPECIES_NAMES = ["ケヤキ","スダジイ","サクラ類","クスノキ","モチノキ","エノキ","ムクノキ","スギ・ヒノキ類","その他"];
+
+/* 幹周（目通り＝地上1.3m の幹の周長）の階級別割合（％・区間別・同資料 p.5〜8）。全体の平均は 1.34m */
+const GIRTH_CLASSES = [[0.2,0.5],[0.5,1.0],[1.0,1.5],[1.5,2.0],[2.0,3.0],[3.0,4.0]];
+const GIRTH_BY_SECTION = [
+  [14.6, 24.4, 19.5, 18.7, 20.3, 2.4],
+  [15.3, 25.2, 19.4, 18.9, 18.5, 2.7],
+  [11.7, 20.7, 29.7, 27.0,  9.9, 0.9],
+  [11.7, 25.9, 28.3, 16.6, 15.1, 2.4],
+];
+/* 樹形と活力度（4 段階・区間別・同資料 p.5〜8）。定義は下の SHAPE_DEF / VIGOR_DEF に逐語で置いた */
+const SHAPE_BY_SECTION = [[21.1,22.0,54.5,2.4],[38.6,35.0,25.5,0.9],[39.6,41.4,16.2,2.7],[42.9,34.6,20.0,2.4]];
+const VIGOR_BY_SECTION = [[14.2,71.7,14.2,0.0],[22.5,65.8,11.3,0.5],[34.0,47.2,16.0,2.8],[30.7,43.9,22.9,2.4]];
+const SHAPE_DEF = ["おおむね自然でバランスのとれた樹形を保っている",
+                   "大枝が偏るなど、樹形がやや崩れている",
+                   "過度の剪定などにより、不自然な樹形になっている",
+                   "枯損などによって樹形が完全に崩壊し、奇形化している"];
+const VIGOR_DEF = ["健全：幹、根元、枝葉にほとんど被害なく、旺盛な生育状況、樹形もよい",
+                   "いくぶん被害を受けているがめだたない、おおむね正常に生育している",
+                   "枯れ枝、枯葉がめだち、腐朽が芯まで進行しているなど、異常が明らか",
+                   "生育状態が劣悪で回復の見込みがない、あるいはすでに枯死状態"];
+
+/* 学名。⚠️ 資料の PDF には 8 樹種ぶんの学名がテキストとして入っているが、**印刷面には表示されない**うえ、
+   綴りに誤記がある。ここでは GBIF Backbone（CC BY 4.0・2026-08-28 に照会）の現行の受容名を使い、
+   資料の表記が違う場合は注記する。クスノキ・サクラ類・イヌシデは資料に学名の記載がない。 */
+const SPECIES_SCI = {
+  "ケヤキ":        { sci:"Zelkova serrata (Thunb.) Makino",            fam:"ニレ科" },
+  "スダジイ":      { sci:"Castanopsis sieboldii (Makino) Hatus.",      fam:"ブナ科",
+                     note:"資料の表記は Castanopsis cuspidata var. sieboldii（ツブラジイの変種とする旧扱い）" },
+  "エノキ":        { sci:"Celtis sinensis Pers.",                      fam:"アサ科" },
+  "ムクノキ":      { sci:"Aphananthe aspera (Thunb.) Planch.",         fam:"アサ科" },
+  "モチノキ":      { sci:"Ilex integra Thunb.",                        fam:"モチノキ科" },
+  "スギ・ヒノキ類": { sci:"Cryptomeria japonica (Thunb. ex L.f.) D.Don ／ Chamaecyparis obtusa (Siebold & Zucc.) Endl.",
+                     fam:"ヒノキ科" },
+};
+
+/* 巨木・天然記念物 21 本（同資料 p.9 の個票。※＝令和4年3月時点で指定解除） */
+const BIG_TREES = [
+  ["E-243","ケヤキ",5.80,18.0,true ],["W-197","ケヤキ",5.55,20.0,false],["W-193","ケヤキ",4.52,12.0,false],
+  ["E-22", "ケヤキ",4.08,22.6,true ],["W-188","ケヤキ",3.90,20.0,true ],["W-244","クスノキ",3.88,25.0,true ],
+  ["E-5",  "ケヤキ",3.60,20.0,false],["W-190","ケヤキ",3.57,20.0,true ],["E-33", "ケヤキ",3.37,20.0,true ],
+  ["E-165","ケヤキ",3.32,20.0,false],["W-254","ケヤキ",3.32,16.0,true ],["E-154","ケヤキ",3.31,21.0,false],
+  ["W-262","ケヤキ",3.29,22.0,false],["E-168","ケヤキ",3.23,20.0,false],["W-258","ケヤキ",3.22,22.0,true ],
+  ["W-276","ケヤキ",2.92,16.0,false],["W-286","ケヤキ",2.85,16.0,false],["E-257","ケヤキ",2.81,17.0,true ],
+  ["E-173","ケヤキ",2.51,20.0,true ],["W-275","ケヤキ",2.47,16.0,true ],["W-287","ケヤキ",2.33,10.0,false],
+];
+/* 樹木番号 → 区間（同資料の区間別本数の累積。南→北の通し番号） */
+const NUM_RANGE = { E:[[1,59,0],[60,183,1],[184,243,2],[244,344,3]], W:[[1,70,0],[71,185,1],[186,241,2],[242,353,3]] };
+
+
+/* ── 街の木（OSM に一本ずつ記録された樹木・大宮区／2026-08-28 Overpass で実測） ──
+   参道の 697 本は市の調査から起こした概略配置だが、こちらは **OSM に実際に置かれた点**。
+   ⚠️ ほとんどのノードは航空写真からの写し取りで、樹種や大きさの属性を持たない。
+      持っているものだけをカードに出す。参道の軸の内側にある無属性のノードは、
+      697 本と二重に数えないよう外してある。 */
+const CITY_TREES = [
+  {lat:35.91592,lon:139.63061,d:"urban",lt:"broadleaved",lc:"deciduous",id:2548325346},
+  {lat:35.91644,lon:139.62976,id:2753723653},
+  {lat:35.91646,lon:139.62988,id:2753723654},
+  {lat:35.91646,lon:139.62983,id:2753723655},
+  {lat:35.91647,lon:139.63011,id:2753723656},
+  {lat:35.91649,lon:139.62977,id:2753723657},
+  {lat:35.9165,lon:139.63,id:2753723658},
+  {lat:35.89719,lon:139.62419,id:2905346464},
+  {lat:35.89736,lon:139.62469,id:2905346487},
+  {lat:35.91213,lon:139.63107,n:"梅",sp:"Prunus mume",lt:"broadleaved",lc:"deciduous",id:3127076295},
+  {lat:35.92442,lon:139.63237,id:3656199580},
+  {lat:35.92441,lon:139.6323,id:3656199581},
+  {lat:35.92451,lon:139.6323,id:3656199582},
+  {lat:35.92453,lon:139.6322,id:3656199583},
+  {lat:35.92457,lon:139.63226,id:3656222116},
+  {lat:35.92462,lon:139.63222,id:3656222117},
+  {lat:35.92471,lon:139.63206,id:3656222118},
+  {lat:35.92477,lon:139.63202,id:3656222119},
+  {lat:35.92492,lon:139.63192,id:3656222120},
+  {lat:35.92498,lon:139.63188,id:3656222121},
+  {lat:35.92501,lon:139.63186,id:3656222123},
+  {lat:35.92511,lon:139.63181,id:3656222124},
+  {lat:35.92533,lon:139.63169,id:3656223025},
+  {lat:35.92539,lon:139.63175,id:3656223026},
+  {lat:35.9255,lon:139.63168,id:3656223027},
+  {lat:35.92555,lon:139.63166,id:3656223028},
+  {lat:35.9257,lon:139.63152,id:3656223029},
+  {lat:35.92577,lon:139.63149,id:3656223030},
+  {lat:35.92523,lon:139.63175,id:3656232558},
+  {lat:35.92543,lon:139.63166,id:3656232559},
+  {lat:35.90584,lon:139.6224,d:"avenue",lt:"broadleaved",id:5965407458},
+  {lat:35.90597,lon:139.62033,d:"avenue",lt:"broadleaved",lc:"evergreen",id:5965407459},
+  {lat:35.9061,lon:139.61988,d:"urban",lt:"broadleaved",lc:"evergreen",id:5965407460},
+  {lat:35.90585,lon:139.62262,d:"urban",lt:"broadleaved",id:5966007855},
+  {lat:35.90589,lon:139.62041,d:"park",lt:"broadleaved",id:5968430653},
+  {lat:35.91407,lon:139.62481,id:7194550206},
+  {lat:35.89592,lon:139.63709,id:10870129935},
+  {lat:35.88976,lon:139.64724,id:12174320223},
+  {lat:35.89116,lon:139.64625,d:"natural_monument",lt:"broadleaved",lc:"evergreen",id:12174320227},
+  {lat:35.891,lon:139.64626,d:"natural_monument",lt:"broadleaved",lc:"evergreen",id:12174320228},
+  {lat:35.89301,lon:139.64487,lt:"broadleaved",lc:"deciduous",id:12176008582},
+  {lat:35.89547,lon:139.64422,lt:"broadleaved",lc:"deciduous",id:12176008588},
+  {lat:35.89318,lon:139.63879,id:12176125854},
+  {lat:35.89311,lon:139.63884,id:12176125855},
+  {lat:35.89304,lon:139.63889,id:12176125856},
+  {lat:35.89296,lon:139.63893,id:12176125857},
+  {lat:35.88808,lon:139.6438,lt:"broadleaved",id:12176178415},
+  {lat:35.90585,lon:139.62057,id:12616261196},
+  {lat:35.90578,lon:139.6206,id:12616261197},
+  {lat:35.90582,lon:139.62068,id:12616261198},
+  {lat:35.90576,lon:139.62071,id:12616261199},
+  {lat:35.90579,lon:139.6208,id:12616261200},
+  {lat:35.90576,lon:139.6209,id:12616276501},
+  {lat:35.90571,lon:139.621,id:12616276502},
+  {lat:35.90568,lon:139.62093,id:12616276503},
+  {lat:35.90562,lon:139.62096,id:12616276504},
+  {lat:35.90564,lon:139.62103,id:12616276505},
+  {lat:35.9056,lon:139.62089,id:12616276506},
+  {lat:35.90558,lon:139.6208,id:12616276507},
+  {lat:35.90556,lon:139.62072,id:12616276508},
+  {lat:35.90561,lon:139.62069,id:12616276509},
+  {lat:35.90567,lon:139.62066,id:12616276510},
+  {lat:35.90572,lon:139.62063,id:12616276511},
+  {lat:35.9059,lon:139.62052,id:12616276512},
+  {lat:35.90589,lon:139.6206,id:12616276513},
+  {lat:35.90586,lon:139.62071,id:12616276514},
+  {lat:35.90584,lon:139.62079,id:12616276515},
+  {lat:35.90582,lon:139.62087,id:12616276516},
+  {lat:35.9058,lon:139.62093,id:12616276517},
+  {lat:35.90566,lon:139.62111,id:12616276518},
+  {lat:35.90573,lon:139.62108,id:12616276519},
+  {lat:35.90571,lon:139.62118,id:12616276520},
+  {lat:35.90555,lon:139.62117,id:12616276521},
+  {lat:35.90552,lon:139.62109,id:12616276522},
+  {lat:35.90549,lon:139.62101,id:12616276523},
+  {lat:35.90542,lon:139.62105,id:12616276524},
+  {lat:35.90544,lon:139.62113,id:12616276525},
+  {lat:35.90547,lon:139.62121,id:12616276526},
+  {lat:35.89962,lon:139.62812,n:"大宮操の桜",id:12643922544},
+  {lat:35.88994,lon:139.62287,n:"与野ロータリークラブ15周年記念植樹",d:"memorial",lt:"broadleaved",lc:"deciduous",id:12756700977},
+  {lat:35.92333,lon:139.63223,id:12976011932},
+  {lat:35.9234,lon:139.6325,id:12976011933},
+  {lat:35.89696,lon:139.62084,lt:"broadleaved",lc:"deciduous",id:13529537602},
+  {lat:35.89693,lon:139.62074,lt:"broadleaved",lc:"deciduous",id:13529537603},
+  {lat:35.89688,lon:139.62063,lt:"broadleaved",lc:"deciduous",id:13529537604},
+  {lat:35.89684,lon:139.62053,lt:"broadleaved",lc:"deciduous",id:13529537605},
+  {lat:35.8968,lon:139.62043,lt:"broadleaved",lc:"deciduous",id:13529537606},
+  {lat:35.89676,lon:139.62032,lt:"broadleaved",lc:"deciduous",id:13529537607},
+  {lat:35.8982,lon:139.62409,lt:"broadleaved",id:13529537611},
+  {lat:35.89823,lon:139.62397,lt:"broadleaved",id:13529537612},
+  {lat:35.89814,lon:139.62391,lt:"broadleaved",id:13529537613},
+  {lat:35.89817,lon:139.6238,lt:"broadleaved",id:13529537614},
+  {lat:35.89807,lon:139.62374,lt:"broadleaved",id:13529537615},
+  {lat:35.89805,lon:139.62354,lt:"broadleaved",id:13529537616},
+  {lat:35.89811,lon:139.62363,lt:"broadleaved",id:13529537617},
+  {lat:35.89796,lon:139.62355,lt:"broadleaved",id:13529537618},
+  {lat:35.89794,lon:139.62348,lt:"broadleaved",id:13529537619},
+  {lat:35.8979,lon:139.62342,lt:"broadleaved",id:13529537620},
+  {lat:35.89759,lon:139.62257,lt:"broadleaved",id:13529537621},
+  {lat:35.8973,lon:139.622,lt:"broadleaved",id:13529537797},
+  {lat:35.89725,lon:139.62185,lt:"broadleaved",id:13529537798},
+  {lat:35.89719,lon:139.62169,lt:"broadleaved",id:13529537799},
+  {lat:35.89714,lon:139.62154,lt:"broadleaved",id:13529537800},
+  {lat:35.89728,lon:139.62146,lt:"broadleaved",id:13529537801},
+  {lat:35.89734,lon:139.62161,lt:"broadleaved",id:13529537802},
+  {lat:35.89739,lon:139.62177,lt:"broadleaved",id:13529537803},
+  {lat:35.89745,lon:139.62191,lt:"broadleaved",id:13529537804},
+  {lat:35.89741,lon:139.62206,lt:"broadleaved",id:13529537805},
+  {lat:35.89745,lon:139.62216,lt:"broadleaved",id:13529537806},
+];
+
+/* ── 文化の層（OSM 実測座標・© OpenStreetMap contributors／祭事は神社公式ほか） ── */
+const CULTURE = [
+  {n:"一の鳥居",lat:35.89794,lon:139.63150,g:"参道",d:"参道の起点。旧中山道の側に立つ",u:"https://www.openstreetmap.org/way/1168906842"},
+  {n:"二の鳥居",lat:35.91110,lon:139.63077,g:"参道",d:"昭和51年に明治神宮から奉納。木造で関東最大級",u:"https://www.city.saitama.lg.jp/001/010/015/004/004/p010795.html"},
+  {n:"三の鳥居",lat:35.91505,lon:139.63047,g:"参道",d:"参道の終点。ここから社殿の域に入る",u:"https://www.openstreetmap.org/node/8110463779"},
+  {n:"氷川参道 平成ひろば",lat:35.90897,lon:139.63092,g:"参道",d:"約8,000㎡。参道と一体の憩いの広場",u:"https://www.city.saitama.lg.jp/001/010/015/004/004/p010795.html"},
+  {n:"氷川だんご屋",lat:35.91193,lon:139.63095,g:"参道",d:"参道の名物。二の鳥居と三の鳥居の間",u:"https://www.openstreetmap.org/node/7935316329"},
+  {n:"楼門",lat:35.91630,lon:139.63001,g:"境内",d:"朱塗りの門。神橋とならぶ象徴的な構え",u:"https://musashiichinomiya-hikawa.or.jp/keidai/"},
+  {n:"舞殿",lat:35.91650,lon:139.62989,g:"境内",d:"楼門内の舞台。大宮薪能もここで行われる",u:"https://www.openstreetmap.org/way/247987399"},
+  {n:"拝殿",lat:35.91672,lon:139.62973,g:"境内",d:"参拝と祈祷の場。舞殿の奥に建つ",u:"https://www.openstreetmap.org/way/271399601"},
+  {n:"本殿",lat:35.91688,lon:139.62965,g:"境内",d:"昭和15年造営の流造。須佐之男命ほかを祀る",u:"https://musashiichinomiya-hikawa.or.jp/keidai/"},
+  {n:"神楽殿",lat:35.91518,lon:139.63066,g:"境内",d:"三の鳥居の内側東。郷神楽や講社大祭に使う",u:"https://musashiichinomiya-hikawa.or.jp/keidai/"},
+  {n:"神池（神橋）",lat:35.91648,lon:139.63050,g:"境内の水",d:"楼門前の池。蛇の池からの流れが注ぐ。標高 10.7m（OSM 上は無名の池。名は位置からの同定）",u:"https://www.openstreetmap.org/way/580921824"},
+  {n:"蛇の池",lat:35.91670,lon:139.62900,g:"境内の水",d:"本殿西の森の湧水。社の発祥地とも伝わる。標高 11.5m（OSM 上は無名の池。名は位置からの同定）",u:"https://musashiichinomiya-hikawa.or.jp/keidai/"},
+  {n:"宗像神社",lat:35.91577,lon:139.62976,g:"摂末社",d:"西側の小島に鎮まる社。水に関わる神を祀る",u:"https://www.openstreetmap.org/way/247987393"},
+  {n:"門客人神社",lat:35.91671,lon:139.63020,g:"摂末社",d:"本殿東側の摂社。境内でも古い由緒をもつ",u:"https://www.openstreetmap.org/way/247987404"},
+  {n:"松尾神社",lat:35.91559,lon:139.63020,g:"摂末社",d:"三の鳥居寄り西側の末社",u:"https://www.openstreetmap.org/way/247987397"},
+  {n:"天津神社",lat:35.91555,lon:139.63074,g:"摂末社",d:"三の鳥居のすぐ内、東側の摂社",u:"https://www.openstreetmap.org/way/247987392"},
+  {n:"稲荷神社",lat:35.91549,lon:139.62977,g:"摂末社",d:"三の鳥居の西。手水舎を伴う末社",u:"https://www.openstreetmap.org/way/871514040"},
+  {n:"六社",lat:35.91567,lon:139.63060,g:"摂末社",d:"住吉・神明・山祇・愛宕・雷・石上を一列に祀る",u:"https://musashiichinomiya-hikawa.or.jp/keidai/"},
+  {n:"御嶽神社",lat:35.91673,lon:139.63029,g:"摂末社",d:"門客人神社の隣に並ぶ末社",u:"https://www.openstreetmap.org/way/247987405"},
+  {n:"夫婦楠",lat:35.91537,lon:139.63065,g:"境内の樹",d:"参拝者に親しまれる境内の巨木",u:"https://musashiichinomiya-hikawa.or.jp/keidai/"},
+  {n:"戦艦武蔵の碑",lat:35.91520,lon:139.63026,g:"碑",d:"艦内神社に氷川神社を勧請した縁の碑",u:"https://www.openstreetmap.org/node/5519911420"},
+  {n:"明治天皇御親祭百五十年祭記念碑",lat:35.91545,lon:139.63023,g:"碑",d:"明治元年の御親祭を記念する碑",u:"https://www.openstreetmap.org/node/8117565461"},
+  {n:"大宮公園（旧氷川公園）",lat:35.91898,lon:139.63154,g:"公園",d:"明治18年開設。県内初の県営公園",u:"https://www.pref.saitama.lg.jp/omiya-park/oshirase/h30/history-omiya.html"},
+  {n:"日本庭園",lat:35.91709,lon:139.63123,g:"公園",d:"大宮公園内の池泉庭園",u:"https://www.pref.saitama.lg.jp/omiya-park/shisetsu.html"},
+  {n:"舟遊池",lat:35.92005,lon:139.62993,g:"公園の水",d:"貸しボートのある池。台地下の低い位置。標高 10.9m",u:"https://www.pref.saitama.lg.jp/omiya-park/shisetsu.html"},
+  {n:"含翠楼跡地",lat:35.91714,lon:139.63232,g:"公園の史跡",d:"明治18年建設の楼の跡。文人が集った保養の地",u:"https://www.pref.saitama.lg.jp/omiya-park/oshirase/h30/history-omiya.html"},
+  {n:"青木昆陽之碑",lat:35.91797,lon:139.63022,g:"碑",d:"甘藷を広めた「甘藷先生」を顕彰する碑",u:"https://www.openstreetmap.org/node/2751349716"},
+  {n:"記憶の扉（高岡典男）",lat:35.91780,lon:139.63152,g:"彫刻",d:"大宮公園内の野外彫刻（人名は作品のクレジット）",u:"https://www.openstreetmap.org/node/2751356375"},
+  {n:"大宮公園小動物園",lat:35.91855,lon:139.63219,g:"公園",d:"無料の小動物園。市民に長く親しまれる",u:"https://www.pref.saitama.lg.jp/omiya-park/shisetsu.html"},
+  {n:"埼玉県営大宮公園野球場",lat:35.91746,lon:139.63351,g:"公園",d:"公園東側の野球場",u:"https://www.openstreetmap.org/way/97209909"},
+  {n:"埼玉縣護國神社",lat:35.91957,lon:139.62791,g:"神社",d:"大宮公園の一角に鎮座する",u:"https://www.openstreetmap.org/way/97209893"},
+  {n:"さいたま市立博物館",lat:35.91132,lon:139.63164,g:"文化施設",d:"参道沿い。大宮の歴史と民俗を展示",u:"https://www.city.saitama.lg.jp/004/005/004/005/008/index.html"},
+  {n:"埼玉県立歴史と民俗の博物館",lat:35.92133,lon:139.63000,g:"文化施設",d:"大宮公園北側。県域の歴史と民俗を扱う",u:"https://www.pref.saitama.lg.jp/omiya-park/shisetsu.html"},
+  {n:"さいたま市大宮盆栽美術館",lat:35.92855,lon:139.63331,g:"文化施設",d:"2010年開館。世界初の公立盆栽美術館",u:"https://omiyabonsai.jp/ja/museum/"},
+  {n:"大宮盆栽村（盆栽町）",lat:35.92567,lon:139.63010,g:"産業",d:"1925年に盆栽業者が移り住んで開村",u:"https://omiyabonsai.jp/ja/history"},
+  {n:"さいたま市立漫画会館",lat:35.92564,lon:139.63181,g:"文化施設",d:"1966年開館。北沢楽天の旧居跡、日本初の公立漫画館",u:"https://www.city.saitama.lg.jp/004/005/002/003/001/"},
+  {n:"鉄道博物館",lat:35.92138,lon:139.61814,g:"文化施設",d:"大宮の鉄道の町としての記憶を集める館",u:"http://www.railway-museum.jp/"},
+  {n:"中山神社",lat:35.90019,lon:139.66399,g:"氷川三社",d:"氷川三社の中央。氷川と女體のほぼ中間に立つ",u:"https://www.openstreetmap.org/way/449053369"},
+  {n:"氷川女體神社",lat:35.88692,lon:139.69376,g:"氷川三社",d:"見沼を望む台地上。氷川三社の一つ",u:"https://www.saitama-jinjacho.or.jp/shrine/8861/"},
+  {n:"磐船祭祭祀遺跡",lat:35.88648,lon:139.69446,g:"史跡",d:"見沼干拓で御船祭が絶えた後に設けた祭祀場",u:"https://www.city.saitama.lg.jp/004/005/006/001/005/001/003/p000512.html"},
+  {n:"見沼通船堀",lat:35.86329,lon:139.70695,g:"史跡",d:"見沼代用水と芝川を結ぶ閘門式運河の跡。標高 5.7m",u:"https://www.openstreetmap.org/way/231355720"},
+  {n:"例祭（8月1日）",lat:35.91688,lon:139.62965,g:"祭事",d:"勅祭社の例祭。勅使の参向と宮中楽師による東游の奉奏が伝えられる",u:"https://musashiichinomiya-hikawa.or.jp/saiten/"},
+  {n:"神幸祭（8月2日）",lat:35.91648,lon:139.63050,g:"祭事",d:"本殿祭と橋上祭。氏子が祭典に直接奉仕する唯一の恒例祭",u:"https://musashiichinomiya-hikawa.or.jp/saiten/"},
+  {n:"大湯祭（11月30日〜12月11日・本祭 12月10日）",lat:35.91672,lon:139.62973,g:"祭事",d:"十二日間にわたる特殊神事",u:"https://musashiichinomiya-hikawa.or.jp/saiten/"},
+  {n:"十日市（12月10日）",lat:35.91505,lon:139.63047,g:"祭事",d:"熊手などの縁起物の市。境内と参道に露店が並ぶ",u:"https://www.city.saitama.lg.jp/006/014/008/003/013/008/p117856.html"},
+  {n:"大宮薪能（5月下旬）",lat:35.91650,lon:139.62989,g:"祭事",d:"金春・観世・宝生の三流に和泉流の狂言も加わる",u:"https://visitsaitamacity.jp/events/14"},
+  {n:"祇園磐船龍神祭（5月4日）",lat:35.88648,lon:139.69446,g:"祭事",d:"見沼干拓で絶えた御船祭に代わる祭",u:"https://www.city.saitama.lg.jp/004/005/006/001/005/001/003/p000512.html"},
+];
+
+/* ── 駅（OSM Overpass 実測・2026-08-27） ── */
+const STATIONS = [
+  {n:"大宮駅",         lat:35.90639, lon:139.62433, sub:"JR・東武ほか"},
+  {n:"さいたま新都心駅", lat:35.89364, lon:139.63395, sub:"JR"},
+  {n:"北大宮駅",       lat:35.91761, lon:139.62481, sub:"東武"},
+  {n:"大宮公園駅",     lat:35.92382, lon:139.63295, sub:"東武"},
+  {n:"土呂駅",         lat:35.93178, lon:139.63213, sub:"JR"},
+  {n:"鉄道博物館駅",   lat:35.92052, lon:139.61767, sub:"ニューシャトル"},
+  {n:"加茂宮駅",       lat:35.93573, lon:139.61683, sub:"ニューシャトル"},
+  {n:"北与野駅",       lat:35.89050, lon:139.62851, sub:"JR"},
+];
+
+/* ── 氷川三社（さいたま市。座標は OSM 実測・方位は座標から算出） ── */
+const SANSHA = [
+  {n:"武蔵一宮 氷川神社", lat:35.91688, lon:139.62965, h:210, d:"参道 2km の突きあたり。氷川三社の中心",
+   u:"https://musashiichinomiya-hikawa.or.jp/"},
+  {n:"中山神社",         lat:35.90019, lon:139.66399, h:130, d:"氷川三社の中央。氷川と女體のほぼ中間に立つ",
+   u:"https://www.openstreetmap.org/way/449053369"},
+  {n:"氷川女體神社",     lat:35.88692, lon:139.69376, h:130, d:"見沼を望む台地の上。三社の東端",
+   u:"https://www.saitama-jinjacho.or.jp/shrine/8861/"},
+];
+
+/* ── 鳥居（OSM 実測位置。3D は位置を示すための象徴的な表現で実測形状ではない） ── */
+const TORII = [
+  {n:"一の鳥居", lat:35.89794, lon:139.63150, w:9,  h:8.5,  d:"参道の起点。旧中山道の側に立つ"},
+  {n:"二の鳥居", lat:35.91110, lon:139.63077, w:12, h:13.0, d:"昭和51年に明治神宮から奉納。木造で関東最大級"},
+  {n:"三の鳥居", lat:35.91505, lon:139.63047, w:9,  h:8.5,  d:"参道の終点。ここから社殿の域に入る"},
+];
+
+/* ── 歴史の層（各個票に出典。社記・伝承は伝承として扱う） ── */
+const HISTORY = [
+  {y:"約7000〜6000年前",t:"縄文海進 ── 見沼一帯が海の入江に",lat:35.905,lon:139.648,k:"推定",
+   b:"芝川沿いの低地（見沼低地）の地下には、海でしか育たない珪藻の化石を含む泥層が残る。産総研の 5 万分の 1 地質図幅によれば、その海水棲珪藻は大宮市土呂町付近まで確認され、海成泥層の中部からは 5,540〜5,950 y.B.P.（放射性炭素年代・未較正）が得られている。市立博物館は、約 7 千年前の海水面が現在より 2〜3m 高く、奥東京湾の一部が市内に入り込んでいたと解説する。参道の立つ台地は、その入江に突き出した岸だった。",
+   w:"y.B.P. は未較正の放射性炭素年代。暦年に直すとおよそ 6,300〜6,800 年前になるが、較正値は当方で確認していない。",
+   sn:"産総研 地質調査総合センター『大宮地域の地質』（5万分の1地質図幅・2002）",
+   u:"https://www.gsj.jp/data/50KGM/PDF/GSJ_MAP_G050_08040_2002_D.pdf"},
+  {y:"縄文〜平安",t:"寿能泥炭層遺跡 ── 水に浸かって木と漆が残った",lat:35.915,lon:139.640,k:"史実（考古）",
+   b:"芝川西岸の低湿地に堆積した泥炭層の中の遺跡。1979 年 10 月 22 日から 1981 年 5 月 10 日まで、約 10,000 ㎡ が発掘された。全国文化財総覧の抄録は時代を縄文・古墳・平安とし、主な遺物に土器・木製品・漆器を挙げる。水に浸かって空気から遮られたことで、ふつうなら消える木や漆が残った。",
+   w:"「約4000〜2500年前」と年代を絞っていたのを改めた。原典は縄文の一時期に限定していない。報告書本体は紙媒体で、当方は総覧の書誌・抄録しか読んでいない。",
+   sn:"奈良文化財研究所 全国文化財総覧（埼玉県立博物館 1984『寿能泥炭層遺跡発掘調査報告書』）",
+   u:"https://sitereports.nabunken.go.jp/ja/49614"},
+  {y:"1981",t:"寿能の土層断面が博物館の天井まで立つ",lat:35.9152,lon:139.6404,k:"史実",
+   b:"埼玉県立歴史と民俗の博物館のエントランスロビーには、寿能泥炭層遺跡で確認された土層の模式断面が、天井に届く高さで展示されている。昭和56年度には特別展「木と漆の原始工芸 ―寿能泥炭層遺跡出土品展―」も開かれた。地面の縦の断面が、そのまま建物の中に立っている。",
+   w:"丸木舟・櫂・木道の出土は事典類に記されるが、全国文化財総覧の「主な遺物」欄は土器・木製品・漆器のみで、一次記載を当方では確認できなかった。そのため、その三点はここに書いていない。",
+   sn:"埼玉県立歴史と民俗の博物館『令和6年度要覧』",
+   u:"https://saitama-rekimin.spec.ed.jp/wysiwyg/file/download/1/7841"},
+  {y:"伝・孝昭天皇3年",t:"社記に伝わる氷川神社の創立",lat:35.91688,lon:139.62965,k:"伝承",
+   b:"神社は「第五代孝昭天皇の御代3年4月未の日の御創立と伝えられます」と記す。実年代は日本書紀の紀年を後世に換算したもので、史料で裏づけられる年ではない。神社は令和10年（2028）に御鎮座2500年祭を迎えるとしており、その数え方では創立は紀元前473年にあたる。",
+   w:"当初「伝・約2400年前」と書いていたが、神社自身の数え（2028年に2500年祭）とおよそ100年ずれるため改めた。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"伝・景行天皇代",t:"日本武尊が東夷鎮定を祈願したと伝わる",lat:35.91680,lon:139.62955,k:"伝承",
+   b:"神社の年表に載る伝承のひとつ。同時代の史料による裏づけはない。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"伝・成務天皇代",t:"兄多毛比命が国造となり奉崇したと伝わる",lat:35.91695,lon:139.62975,k:"伝承",
+   b:"出雲族の兄多毛比命が武蔵国造となり、この社を奉じたと神社は記す。氷川と出雲を結びつける社伝の芯にあたる話だが、これも社伝であって史料ではない。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"766",t:"記録に現れる最初 ── 朝廷が封戸三戸を寄せる",lat:35.91678,lon:139.62985,k:"史実",
+   b:"神社自身が「記録上で氷川神社が確認できる最初のもの」と言うのが、平安時代の法制書『新抄格勅符抄』に載る、天平神護2年（766）に朝廷が封戸三戸を寄進したという記述である。ここから先が、伝承ではなく記録の領域になる。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」（『新抄格勅符抄』による）", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"927",t:"延喜式神名帳に名神大社として載る",lat:35.91698,lon:139.62955,k:"史実",
+   b:"『延喜式』の神名帳に名神大社として登載され、月次・新嘗の官幣に預かった。国家の祭祀の枠組みに、この社の名が書き込まれている。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」（『延喜式』巻9・10）", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"鎌倉期以降",t:"武蔵一宮の位置づけ（確立の時期には諸説）",lat:35.91660,lon:139.62945,k:"史実・諸説",
+   b:"武蔵国の一宮とされるが、いつどのように定まったかについては説が分かれる。多摩の小野神社を一宮とする資料もあり、一宮という呼び名そのものが時代によって動いている。",
+   w:"確立の時期・経緯は当方では確定できていない。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1180",t:"源頼朝が社殿を再建したと伝わる",lat:35.91700,lon:139.62990,k:"社記",
+   b:"神社の年表は「治承四年（1180）源頼朝、社殿再建」と年を特定して記す。神社はこれを「武家時代になっても、鎌倉・足利・北条・徳川氏等相次いで当社を尊仰し、社殿の再建や造営を行っています」という流れの中に置いている。",
+   w:"社記にもとづく記述で、同時代の一次史料による裏づけは当方では確認できなかった。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」年表", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1336",t:"足利尊氏が参詣し社領を寄進したと伝わる",lat:35.91650,lon:139.62960,k:"社記",
+   b:"神社の年表は「建武三年（1336）足利尊氏参詣、足立郡大調郷寄進」と記す。社領を寄せた武家の系列は、神社の解説では鎌倉・足利・北条・徳川の順に並ぶ。",
+   w:"新田氏に関する記述は、神社の由緒・年表のいずれにも見あたらなかった。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」年表", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1591〜1604",t:"徳川氏が社領を寄せ、社殿の造営を支える",lat:35.91640,lon:139.62985,k:"史実",
+   b:"江戸に入った徳川氏が社領を寄進し、社殿の造営を支えた。江戸の北の守りとして、この杜が位置づけ直されていく時期にあたる。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1628",t:"中山道を参道の西へ付け替え、大宮宿が成立",lat:35.89830,lon:139.63020,k:"史実",
+   b:"それまで参道を通っていた中山道が西へ付け替えられ、大宮宿が置かれた。人の通る道と、社へ向かう道が分かれた年である。いまの参道が「まっすぐで、生活道路ではない」形をしているのは、この付け替えに由来する。",
+   sn:"さいたま市『氷川参道のまちづくり』",
+   u:"https://www.city.saitama.lg.jp/001/010/015/004/004/p009506_d/fil/hikawasandonomachidukuri.pdf"},
+  {y:"1629",t:"伊奈忠治が八丁堤を築き、見沼溜井をつくる",lat:35.86300,lon:139.68900,k:"史実",
+   b:"芝川をせき止める八丁堤が築かれ、見沼が広大な溜井（ためい）になった。水を貯めるためにつくられた沼であり、この百年後に、その水を抜くという逆の工事が行われる。",
+   sn:"埼玉県『見沼代用水』", u:"https://www.pref.saitama.lg.jp/documents/265674/28001-5_minumadai.pdf"},
+  {y:"1727〜28",t:"井澤弥惣兵衛が見沼代用水を開削、見沼を干拓",lat:35.90000,lon:139.66000,k:"史実",
+   b:"享保12年（1727）9月から翌享保13年（1728）2月までの 6 か月で、約 1,200ha の見沼溜井を干拓し、代わりの水を利根川から引く約 60km の用水を通した。当初の取水口は「元圦」、現在は利根大堰。享保13年には 1,228 町 5 反歩（約 12km²）の見沼新田が開かれた。溜井を水面から田に変える、大宮台地の東側の地形が書き換えられた工事である。",
+   sn:"見沼代用水土地改良区／さいたま市立博物館 展示web解説",
+   u:"https://www.minuma-daiyosui-lid.or.jp/know/"},
+  {y:"1729",t:"沼を渡る御船祭に代え、磐船祭を始める",lat:35.88648,lon:139.69446,k:"史実",
+   b:"見沼が干拓されて船が出せなくなり、沼を渡る御船祭が絶えた。代わりに陸で行う磐船祭が始められ、その祭祀場の跡が磐船祭祭祀遺跡として残る。地形を変えることは、祭りの形を変えることでもあった。",
+   sn:"見沼田んぼ応援団／さいたま市 文化財紹介",
+   u:"https://www.city.saitama.lg.jp/004/005/006/001/005/001/003/p000512.html"},
+  {y:"1731",t:"見沼通船堀が開通 ── 水位差 3m を関で越える",lat:35.86329,lon:139.70695,k:"史実",
+   b:"享保16年（1731）、見沼代用水の東縁・西縁と芝川を結ぶ総延長約 1,040m の閘門式運河が開通した。用水と芝川の水位差が 3m あったため、東西それぞれ 2 か所に関を設け、水位を上げ下げして船を通した。見沼の米が江戸へ、江戸から肥料や荒物が届いた。昭和初期に役割を終え、昭和57年（1982）7月3日に国の史跡に指定されている。",
+   w:"所在は緑区・川口市で、大宮区から約 8km 南東。参道の圏の外にある点である。",
+   sn:"さいたま市 文化財紹介／文化庁 文化遺産オンライン",
+   u:"https://www.city.saitama.lg.jp/004/005/006/001/005/001/001/p000146.html"},
+  {y:"1843",t:"大宮宿は本陣1・脇本陣9（中山道最多）と記録",lat:35.90600,lon:139.62600,k:"史実",
+   b:"天保14年の記録で、大宮宿の脇本陣は 9 軒。中山道の宿場のなかで最も多い。参道の西を通る道に、これだけの宿が並んでいた。",
+   sn:"『中山道宿村大概帳』にもとづく記述", u:"https://ja.wikipedia.org/wiki/大宮宿"},
+  {y:"1868",t:"勅祭の社と定められ、明治天皇が行幸・親祭",lat:35.91672,lon:139.62973,k:"史実",
+   b:"明治元年、明治天皇は都を東京に遷すにあたり、氷川神社を武蔵国の鎮守勅祭の社と定め、親祭の勅書を下した。市の資料は勅書の発布を 10 月 17 日とし、その 11 日後、天皇が 500 人を越える行列を随えて江戸城から参拝したと記す。神社は同年 10 月 28 日の行幸・御親祭とし、明治 3 年・11 年にも行幸があったとする。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」／さいたま市『氷川参道のまちづくり』",
+   u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1871",t:"宮山 約59,300坪が上知令で収公 ── 杜の持ち主が変わる",lat:35.91900,lon:139.63150,k:"史実",
+   b:"明治4年、氷川神社の「宮山」約 59,300 坪が上知令により収公され、官有地になった。埼玉県は、いまの大宮公園の場所が江戸時代まで氷川神社の境内地で「奥山」と呼ばれていたこと、明治4年1月に境内地の一部が上地されて官有地となったことを記す。14 年後、その土地に氷川公園が開かれる。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」年表／埼玉県「大宮公園の歴史」",
+   u:"https://www.pref.saitama.lg.jp/omiya-park/oshirase/h30/history-omiya.html"},
+  {y:"1871",t:"官幣大社に列格",lat:35.91685,lon:139.62950,k:"史実",
+   b:"明治4年、官幣大社に列した。国家が神社を格付けする制度のなかで、最上位に近い位置に置かれたことになる。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1882",t:"本殿を改築し遷宮祭を斎行",lat:35.91692,lon:139.62978,k:"社記",
+   b:"江戸末期まで男体宮・女体宮・簸王子宮の三本殿だったものが、明治初年に男体宮を本社、他を摂社に改められ、明治15年に新しい本殿が造営された。主祭神を三座とするのは明治29年。いまの一棟の本殿は、この整理の結果である。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1885",t:"日本鉄道の大宮駅が開業",lat:35.90639,lon:139.62433,k:"史実",
+   b:"明治18年（1885）3月16日、日本鉄道の大宮停車場が開設された。地元有力者の誘致運動が実を結んだという説明が長く通説だったが、埼玉県立文書館の研究は、鉄道局が明治14年（1881）12月に太政官へ出した実測図の段階ですでに「大宮」がステーションとして記入されていることを示している。",
+   w:"「地元の誘致運動」という括弧書きを外した。通説だが学術的に見直しの途上にある。",
+   sn:"埼玉県立文書館の研究にもとづく", u:"https://ja.wikipedia.org/wiki/大宮駅_(埼玉県)"},
+  {y:"1885",t:"氷川公園（現・大宮公園）が開く",lat:35.91898,lon:139.63154,k:"史実",
+   b:"明治18年（1885）9月22日、地元の要望を受けて「氷川公園」が誕生した。当初の管理は県勧業課で、明治24年9月からは一時大宮町に移り、明治31年4月に再び県営に戻っている。埼玉県は「県営公園の中では最も長い歴史を持つ公園」と記す。大宮公園への改称は昭和23年。",
+   w:"「県内初の県営公園」と書いていたのを改めた。埼玉県の公式の言い方は「県営公園の中では最も長い歴史を持つ公園」で、明治24〜31年は町営だった空白がある。",
+   sn:"埼玉県「大宮公園の歴史」", u:"https://www.pref.saitama.lg.jp/omiya-park/oshirase/h30/history-omiya.html"},
+  {y:"1894",t:"日本鉄道の自社工場が大宮駅の東に置かれる",lat:35.90800,lon:139.63400,k:"史実",
+   b:"明治27年（1894）、日本鉄道の自社工場が大宮駅の東に置かれた。JR東日本は現在の大宮総合車両センターを「1894年当時の日本鉄道株式会社 業務部 汽車課として設立されて以来、130年にわたって鉄道車両のメンテナンスや新造・改造を行っています」と記す。駅と工場が並んだことで、大宮は宿場町から鉄道の町へ移っていく。",
+   w:"開設の月日・当時の職員数・「大宮工場」への改称年は、当方では一次確認できなかったので書いていない。",
+   sn:"JR東日本 JREメディア", u:"https://media.jreast.co.jp/articles/1427"},
+  {y:"1921〜1934",t:"本多静六の改良計画 ── 湿地を埋めて池と芝地をつくる",lat:35.92005,lon:139.62993,k:"史実",
+   b:"大正10年5月、埼玉県の依頼で本多静六と田村剛が「氷川公園改良計画案」を作成した。これに基づき昭和5年5月29日に拡張区域の湿地等埋立工事の鍬入れ式が行われ、工事起工調書によれば昭和5年9月から昭和7年6月の間に 2,727 人を動員して 10,458 立方メートルの埋立が行われている。舟遊池の整備完了は昭和9年10月。いまある池と芝地は、埋め立てられた湿地の上にある。",
+   sn:"埼玉県「大宮公園の歴史」", u:"https://www.pref.saitama.lg.jp/omiya-park/oshirase/h30/history-omiya.html"},
+  {y:"1925",t:"関東大震災を機に盆栽業者が移り住み、盆栽村が開村",lat:35.92567,lon:139.63010,k:"史実",
+   b:"1923 年の関東大震災で被災した東京の盆栽業者が、盆栽づくりに適した広い土地と新鮮な水と空気を求めて移り住み、1925 年に大宮盆栽村を設立した。開村時には「盆栽を10鉢以上持つこと／門戸を開放すること／二階建ては建てないこと／垣は生け垣とすること」の四つの規約が定められた。土と水の条件で選ばれた土地であり、垣を生け垣にする取り決めは、村ぐるみで緑を選んだということでもある。",
+   w:"所在は現在の北区盆栽町で、大宮区ではない。大宮台地の上という点で地続きの話。",
+   sn:"さいたま市大宮盆栽美術館「大宮の盆栽 歴史」", u:"https://omiyabonsai.jp/ja/history/"},
+  {y:"1934頃",t:"杉からケヤキへ ── 理由は定まっていない",lat:35.90600,lon:139.63110,k:"伝承・諸説",
+   b:"さいたま市の資料は「杉からケヤキに変わった理由は諸説ありますが、一説には、昭和9年の室戸台風によって倒木した杉に代わって、風に強いケヤキを植樹したのではないかと言われています」と記す。神社はこれとは別に、戦中戦後の資材難による伐採、車の排気ガスや振動、地下水脈の低下、歩行者による根元の踏み固めなど複数の要因を挙げる。樹木調査の裏表紙は「昭和30年代に姿を消し、その後ケヤキが席巻したようである」と書く。どれが主因かは定まっていない。",
+   w:"室戸台風（1934年9月21日）は高知県室戸岬に上陸し京阪神を中心に被害を出した台風で、埼玉での風害の記録は当方では確認できなかった。神社の記録には明治35年の風害の報告書への言及もある。",
+   sn:"さいたま市『氷川参道のまちづくり』／武蔵一宮 氷川神社「氷川参道 樹勢の変遷と今」",
+   u:"https://www.city.saitama.lg.jp/001/010/015/004/004/p009506_d/fil/hikawasandonomachidukuri.pdf"},
+  {y:"1940",t:"昭和の大造営が竣工 ── いまの社殿と境内",lat:35.91630,lon:139.63001,k:"史実",
+   b:"神社の年表は「昭和十五年（1940）本殿・拝殿・幣殿等竣工、正遷座祭を行う」と記す。いまの社殿と境内は、紀元2600年を機に官幣大社にふさわしい神域を整備するために行われた「昭和の大造営」によるもので、昭和9年の神饌所竣工・表参道改修、昭和12年の勅使斎館竣工と続いた一連の事業の竣工年にあたる。造営時の屋根は檜皮葺で、昭和42年の記念事業で銅板に葺き替えられた。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史」年表", u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1945〜1989",t:"参道の闇市 ── そして「平成ひろば」",lat:35.90898,lon:139.63093,k:"史実",
+   b:"昭和20年の終戦後、大宮駅前にできた闇市が、1 年の約束で参道の中央通り〜旧16号国道間に移された。しかし約 40 年とどまり、164 戸の住まいと店舗が残って「樹木もほとんど枯死してしまい並木の景観も失われました」と神社は記す。昭和60年から旧大宮市の氷川地区整備事業が始まり、跡地を市が借地して延長約 420m・面積 1.4ha の緑地が整備され、平成元年7月に完成して「平成ひろば」と名づけられた。いま参道の中ほどが広く緑なのは、そこが一度失われた場所だからである。",
+   sn:"武蔵一宮 氷川神社「由緒・歴史／平成ひろばの整備」／さいたま市『氷川参道のまちづくり』",
+   u:"https://musashiichinomiya-hikawa.or.jp/about/"},
+  {y:"1975",t:"参道並木が市指定天然記念物に",lat:35.90300,lon:139.63140,k:"史実",
+   b:"昭和50年（1975）2月7日、「氷川参道の並木」が市指定天然記念物になった（昭和63年12月2日に追加指定）。指定範囲は大宮区吉敷町から高鼻町で、指定時に幹回り 2m 以上あった大木が対象。枯死や倒木による指定解除が重なり、樹木調査終了時に 20 本、令和5年7月14日現在で 11 本まで減っている。",
+   w:"当初の指定本数は市の資料どうしで食い違う（29本と30本）。ここでは幅のまま扱い、断定しない。",
+   sn:"さいたま市「文化財紹介 氷川参道の並木」",
+   u:"https://www.city.saitama.lg.jp/004/005/006/001/005/002/003/p000590.html"},
+  {y:"2000",t:"さいたま新都心がまちびらき",lat:35.89400,lon:139.63200,k:"史実",
+   b:"平成12年（2000）5 月、さいたま新都心がまちびらきした。さいたま市は「埼玉の中心となる新しい都心をつくり、首都東京の重要な役割の一部を引き受け、にぎやかで魅力ある空間をつくることを目標」としたと記す。さいたまスーパーアリーナ、空中に人工の地面をつくってけやきを植えた「けやきひろば」、国の機関などが集まる。",
+   w:"「5月5日」「大宮操車場跡地」は市の公式ページに記載がなく、当方では確認できなかったので書いていない。主要街区は中央区で、大宮区にかかるのは東側の一部。",
+   sn:"さいたま市「さいたま新都心ってどんなところ？」",
+   u:"https://www.city.saitama.lg.jp/001/010/015/014/p078748.html"},
+  {y:"2001",t:"浦和・大宮・与野が合併しさいたま市誕生",lat:35.90700,lon:139.62800,k:"史実",
+   b:"平成13年（2001）5 月 1 日、浦和市・大宮市・与野市の 3 市が合併してさいたま市が誕生した。平成15年4月1日には、旧大宮市域に西区・北区・大宮区・見沼区が置かれ、全国で13番目の政令指定都市となった。平成17年4月1日には岩槻市を編入して岩槻区が置かれている。",
+   sn:"さいたま市「市の歴史」", u:"https://www.city.saitama.lg.jp/006/012/001/007/p015749.html"},
+  {y:"2002〜2010",t:"市民延べ約240名が、参道の樹木697本を1本ずつ測る",lat:35.90900,lon:139.63095,k:"史実",
+   b:"氷川の杜まちづくり協議会が、樹木医の指導のもと、一の鳥居から三の鳥居までのおおむね高さ 5m 以上の樹木を 1 本ずつ測った。2002 年 11 月に始まり、足掛け 8 年・延べ 11 日間、市職員を含む延べ約 240 名（市民198・市職員41）が参加して、2010 年 3 月に 697 本（東344・西353）の調査を終えた。目通り・樹高・枝張り・樹木間隔・建物との距離を測り、樹形と活力度を 4 段階で判定し、1 本につき 3 枚ほど写真を残している。距離の測定には芝浦工業大学の協力で超音波測定器「ピッキョリ」を使い、1 本あたり 15 分ほどかかった。",
+   w:"市の別資料にある「655本」は、調査後に伐採された分を引いた平成22年3月現在の現存本数。697 は調査した本数の合計で、どちらも正しい。",
+   sn:"氷川の杜まちづくり協議会 編／さいたま市『氷川参道の樹木調査』（令和4年3月改訂）",
+   u:"https://www.city.saitama.lg.jp/001/010/015/004/004/p014020.html"},
+  {y:"2007",t:"鉄道博物館が開館",lat:35.92173,lon:139.61786,k:"史実",
+   b:"平成19年（2007）10月14日、大宮区大成町に鉄道博物館が開館した。JR東日本の20周年を記念した事業で、平成30年（2018）7月には新館が開いた。日本鉄道の工場が置かれてから 113 年、鉄道の町がその記憶を収める建物を持った。",
+   sn:"鉄道博物館", u:"https://www.railway-museum.jp/about/"},
+  {y:"2019",t:"参道中区間 約450m を歩行者専用化",lat:35.90897,lon:139.63092,k:"史実",
+   b:"平成31年（2019）4 月 25 日から、氷川参道の中区間（南大通東線から旧一灯式信号交差点の間）約 450m が歩行者専用になった。市と神社と市民の三者による長い協議の末の一区間で、協議会は「参道の一部区間を歩行者専用化することができたことは、大きな一歩」と記している。",
+   sn:"さいたま市「氷川参道の歩行者専用化について」",
+   u:"https://www.city.saitama.lg.jp/001/010/015/004/004/p010795.html"},
+  {y:"2019",t:"見沼代用水が世界かんがい施設遺産に登録",lat:35.90000,lon:139.66500,k:"史実",
+   b:"令和元年9月4日、見沼代用水が世界かんがい施設遺産に登録された。享保12〜13年（1727〜28）に約半年で通された約 60km の水路が、290 年余りを経て国際的に記録された。取水口は当初の「元圦」から現在の利根大堰へ移っているが、水は今も同じ低地を流れている。",
+   sn:"見沼代用水土地改良区", u:"https://www.minuma-daiyosui-lid.or.jp/know/"},
+];
+
+/* ── 道具 ── */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+/* 年号の表示：「1885」だけでは何の数字か分からないので「1885年」と書く。
+   すでに「年」を含むもの（約7000〜6000年前）や、時代の名（縄文〜弥生）はそのまま。 */
+function yearLabel(y) {
+  const t = String(y ?? "");
+  if (!/[0-9]/.test(t) || /年/.test(t)) return t;
+  if (/頃$/.test(t)) return t.replace(/頃$/, "年頃");
+  return t + "年";
+}
+const stamp = () => new Date().toLocaleString("ja-JP", { hour12:false });
+/* 受信の状態を一行で名乗る（null で消す・第二引数 true でエラーとして残す） */
+function bootMsg(t, isErr) {
+  const el = $("hudBoot"); if (!el) return;
+  if (t === null) { el.style.display = "none"; return; }
+  el.style.display = "flex"; el.classList.toggle("err", !!isErr);
+  $("hudBootT").textContent = t;
+}
+const fetchJSON = async (url, ms=20000) => {
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms);
+  try { const r = await fetch(url, { signal: ac.signal });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json(); }
+  finally { clearTimeout(t); }
+};
+/* 種を固定した擬似乱数（作品の配置を毎回同じにする） */
+let _seed = 20260827;
+const rnd = () => { _seed = (_seed * 1103515245 + 12345) & 0x7fffffff; return _seed / 0x7fffffff; };
+
+/* 参道の軸上距離 s(m) → [lon, lat, h] と法線方向 */
+function alongSando(s) {
+  const t = Math.max(0, Math.min(1, s / SANDO_LEN)) * (SANDO.length - 1);
+  const i = Math.min(SANDO.length - 2, Math.floor(t)), f = t - i;
+  const a = SANDO[i], b = SANDO[i + 1];
+  const lon = a[0] + (b[0] - a[0]) * f, lat = a[1] + (b[1] - a[1]) * f, h = a[2] + (b[2] - a[2]) * f;
+  // 進行方向の法線（東西方向のオフセット用・緯度補正込み）
+  const dLon = (b[0] - a[0]) * Math.cos(lat * Math.PI / 180), dLat = b[1] - a[1];
+  const len = Math.hypot(dLon, dLat) || 1e-9;
+  return { lon, lat, h, nx: dLat / len, ny: -dLon / len };
+}
+const M_PER_DEG = 111320;
+function offsetLL(p, meters) {   // 参道の法線方向へ meters（+東 / −西）
+  return [ p.lon + (p.nx * meters) / (M_PER_DEG * Math.cos(p.lat * Math.PI / 180)),
+           p.lat + (p.ny * meters) / M_PER_DEG ];
+}
+
+/* ── カード ── */
+function showCard(kind, color, title, bodyHTML, metaHTML) {
+  $("cardK").textContent = kind; $("cardK").style.color = color;
+  $("card").style.borderTopColor = color;
+  $("cardT").innerHTML = title; $("cardB").innerHTML = bodyHTML; $("cardM").innerHTML = metaHTML || "";
+  $("card").style.display = "block";
+}
+$("cardClose").addEventListener("click", () => { $("card").style.display = "none"; });
+$("srcBtn").addEventListener("click", () => { $("srcSheet").style.display = "grid"; });
+$("srcClose").addEventListener("click", e => { e.preventDefault(); $("srcSheet").style.display = "none"; });
+$("srcSheet").addEventListener("click", e => { if (e.target.id === "srcSheet") $("srcSheet").style.display = "none"; });
+
+/* ── 五つのレイヤ ── */
+let viewer = null, tilesetRef = null;
+const VOICES = [
+  { key:"bldg", label:"建物",   color:COLORS.bldg, ents:[] },
+  { key:"life", label:"生きもの", color:COLORS.life, ents:[] },
+  { key:"tree", label:"樹木",   color:COLORS.tree, ents:[] },
+  { key:"hist", label:"歴史",   color:COLORS.hist, ents:[] },
+  { key:"cult", label:"文化",   color:COLORS.cult, ents:[] },
+];
+const V = Object.fromEntries(VOICES.map(v => [v.key, v]));
+const voiceOn = k => { const el = $("vc-" + k); return el ? el.getAttribute("aria-pressed") === "true" : true; };
+const setCount = (k, n) => { const el = $("vn-" + k); if (el) el.textContent = n; };
+
+function applyVoice(key, on) {
+  if (key === "bldg") { if (tilesetRef) tilesetRef.show = on; return; }
+  V[key].ents.forEach(e => e.show = on);
+}
+function buildVoiceChips() {
+  for (const v of VOICES) {
+    const b = document.createElement("button");
+    b.className = "voice"; b.id = "vc-" + v.key; b.setAttribute("aria-pressed", "true");
+    b.innerHTML = `<span class="dot" style="background:${v.color};color:${v.color}"></span>${esc(v.label)}<span class="n" id="vn-${v.key}">…</span>`;
+    b.addEventListener("click", () => {
+      const on = b.getAttribute("aria-pressed") !== "true";
+      b.setAttribute("aria-pressed", String(on));
+      applyVoice(v.key, on);
+    });
+    $("hudVoices").appendChild(b);
+  }
+}
+
+/* 重奏の脈：レイヤごとに位相をずらした呼吸を、共有プロパティ 1 本で全点に効かせる */
+let pulseOn = true;
+const t0 = Date.now();
+function pulseProp(base, phase) {
+  return new Cesium.CallbackProperty(() => {
+    if (!pulseOn) return base;
+    const t = (Date.now() - t0) / 1000;
+    return base * (1 + 0.28 * Math.sin((t / 5.0 + phase) * Math.PI * 2));
+  }, false);
+}
+const PULSE = {};
+
+
+/* =====================================================================
+   地形について（2026-08-28 上原さんの判断で「やめる」）
+   一度は国土地理院の標高タイル（DEM10B/DEM5A）を復号して起伏をつくったが、
+   **標高タイルは地図タイルと同じ配信元**（cyberjapandata.gsi.go.jp）なので、
+   両方を取りに行くと接続の順番待ちを奪い合い、地表が出るのが遅れた。
+   しかもこの一帯の起伏は参道で 1.9m、台地と低地の段差で 10m 程度しかなく、
+   誇張しなければほとんど見えない。**得るものより、地図が出ない害のほうが大きい。**
+   よって地形は平らな楕円体に戻した。実装は _dev/旧ver/v4.1_重奏_*.html に残してある。
+   標高そのものは捨てていない ── 参道 25 点の実測値（12.4〜14.3m）は SANDO に持っており、
+   カードや解説で「台地の背」として使える。地面の形としては起こさない、というだけである。
+   ===================================================================== */
+
+/* =====================================================================
+   社殿の象り（2026-08-28 上原さん指示）
+   PLATEAU の建物データは境内を切り抜いて外し、代わりにここで組んだ立体を置く。
+   ⚠️ **これは「そこに社殿が建っていることを示すための象り」であり、実測の形状ではない。**
+      屋根の反り・組物・彫刻・彩色の細部は表していない。御神体や内陣にあたるものは表さない。
+      鳥居と同じ扱い（作品の他の 3D と同じ約束）。
+   境内はほぼ平坦（標高 12.6〜12.9m）なので、社殿はひとつの地盤高の上に組んでいる。
+   ===================================================================== */
+/* 境内の地盤。地球を平らな楕円体（高さ0）に戻したので、社殿もその上に建てる。
+   ⚠️ 実際の境内は標高 12.6〜14.9m だが、ここでは地面の形を起こしていないので 0 を基準にする。 */
+const SHRINE_GROUND = 0;
+const C_HINOKI = Cesium.Color.fromCssColorString("#d8c6a6");   // 素木
+const C_SHU    = Cesium.Color.fromCssColorString("#c4553a");   // 朱
+const C_ROOF   = Cesium.Color.fromCssColorString("#556672");   // 屋根（銅板・瓦の面）
+const C_EAVE   = Cesium.Color.fromCssColorString("#46545e");   // 軒先の小口
+const C_BASE   = Cesium.Color.fromCssColorString("#6f6a60");   // 基壇
+
+/* 一棟を組む。棟は東西に通す（南を向いた社殿の形）。
+   w＝間口（東西 m）／d＝奥行（南北 m）／wallH＝軸部の高さ／roofH＝棟までの高さ／
+   eave＝軒の出／nagare＝南側の屋根をどれだけ長く伸ばすか（流造なら正の値） */
+function buildHall(cfg) {
+  const ent = viewer.entities, g = SHRINE_GROUND;
+  const { lon, lat, w, d, wallH, roofH, eave = 1.2, nagare = 0,
+          body = C_HINOKI, roof = C_ROOF, posts = null, n, u } = cfg;
+  const meta = { type: "hall", n, d: cfg.desc, u };
+  const put = e => { e._d = meta; V.cult.ents.push(e); return e; };
+
+  /* 基壇 */
+  put(ent.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat, g + 0.35),
+    box: { dimensions: new Cesium.Cartesian3(w + 2.2, d + 2.2, 0.7), material: C_BASE,
+           heightReference: Cesium.HeightReference.NONE },
+  }));
+  /* 軸部 */
+  put(ent.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat, g + 0.7 + wallH / 2),
+    box: { dimensions: new Cesium.Cartesian3(w, d, wallH), material: body,
+           heightReference: Cesium.HeightReference.NONE },
+  }));
+  /* 柱（朱塗りの門などで前に立てる） */
+  if (posts) {
+    for (const dx of [-w / 2 + 0.9, w / 2 - 0.9]) {
+      for (const dy of [-d / 2 + 0.9, d / 2 - 0.9]) {
+        const [plon, plat] = metersLL(lon, lat, dx, dy);
+        put(ent.add({
+          position: Cesium.Cartesian3.fromDegrees(plon, plat, g + 0.7 + wallH / 2),
+          cylinder: { length: wallH, topRadius: 0.42, bottomRadius: 0.48, material: posts,
+                      heightReference: Cesium.HeightReference.NONE },
+        }));
+      }
+    }
+  }
+  /* 縁（楼門は二層の門なので、中ほどに縁がまわる） */
+  if (cfg.balcony) {
+    const bh = g + 0.7 + wallH * 0.52;
+    put(ent.add({
+      position: Cesium.Cartesian3.fromDegrees(lon, lat, bh),
+      box: { dimensions: new Cesium.Cartesian3(w + 2.4, d + 2.4, 0.32),
+             material: body, heightReference: Cesium.HeightReference.NONE },
+    }));
+    put(ent.add({                                   /* 高欄（手すりの帯） */
+      position: Cesium.Cartesian3.fromDegrees(lon, lat, bh + 0.55),
+      box: { dimensions: new Cesium.Cartesian3(w + 2.4, d + 2.4, 0.62),
+             material: body.withAlpha(0.55), heightReference: Cesium.HeightReference.NONE },
+    }));
+  }
+  /* 屋根 ── 傾いた二枚の面と、東西の妻。棟は東西 */
+  const eaveH = g + 0.7 + wallH;                 // 軒の高さ
+  const ridgeH = g + 0.7 + roofH;                // 棟の高さ
+  const hw = w / 2 + eave, sN = d / 2 + eave, sS = d / 2 + eave + nagare;
+  const pt = (dx, dy, h) => { const [a, b] = metersLL(lon, lat, dx, dy); return [a, b, h]; };
+  const plane = (pts) => put(ent.add({ polygon: {
+    hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArrayHeights(pts.flat())),
+    perPositionHeight: true, material: roof,
+    heightReference: Cesium.HeightReference.NONE, outline: false } }));
+  /* 北へ下る面 */
+  plane([ pt(-hw, 0, ridgeH), pt(hw, 0, ridgeH), pt(hw, -sN, eaveH), pt(-hw, -sN, eaveH) ]);
+  /* 南へ下る面（流造はここが長く伸びて向拝になる） */
+  plane([ pt(-hw, 0, ridgeH), pt(hw, 0, ridgeH), pt(hw, sS, eaveH - nagare * 0.28), pt(-hw, sS, eaveH - nagare * 0.28) ]);
+  /* 妻（東西の三角） */
+  for (const sx of [-1, 1]) {
+    plane([ pt(sx * hw, 0, ridgeH), pt(sx * hw, -sN, eaveH), pt(sx * hw, sS, eaveH - nagare * 0.28) ]);
+  }
+  /* 軒先の小口（屋根の縁に重さを出す。日本の建築は屋根が主役） */
+  for (const [dy, hh] of [[-sN, eaveH], [sS, eaveH - nagare * 0.28]]) {
+    const [elon, elat] = metersLL(lon, lat, 0, dy);
+    put(ent.add({
+      position: Cesium.Cartesian3.fromDegrees(elon, elat, hh - 0.18),
+      box: { dimensions: new Cesium.Cartesian3(w + eave * 2 + 0.4, 0.5, 0.42),
+             material: C_EAVE, heightReference: Cesium.HeightReference.NONE },
+    }));
+  }
+  /* 棟（背の一本） */
+  put(ent.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat, ridgeH + 0.22),
+    box: { dimensions: new Cesium.Cartesian3(w + eave * 2 + 0.6, 0.75, 0.55),
+           material: roof, heightReference: Cesium.HeightReference.NONE },
+  }));
+  /* 名 */
+  put(ent.add({
+    position: Cesium.Cartesian3.fromDegrees(lon, lat, ridgeH + 4),
+    label: { text: n, font: "12px sans-serif", fillColor: Cesium.Color.fromCssColorString("#f6ecd6"),
+             showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.6)"),
+             pixelOffset: new Cesium.Cartesian2(0, -8), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+             heightReference: Cesium.HeightReference.NONE,
+             scaleByDistance: new Cesium.NearFarScalar(500, 1.0, 3200, 0.0) },
+  }));
+}
+
+/* 社殿の並び（南 → 北。座標は OSM 実測、寸法は象りの比率） */
+const HALLS = [
+  { key:"romon",  n:"楼門",  lon:139.63001, lat:35.91630, w:13, d:7.5, wallH:7.6,  roofH:14.0, eave:3.0,
+    body:C_SHU, posts:C_SHU, balcony:true,
+    desc:"朱塗りの二層の門。神橋を渡った先に立つ。",
+    u:"https://musashiichinomiya-hikawa.or.jp/keidai/" },
+  { key:"maiden", n:"舞殿",  lon:139.62989, lat:35.91650, w:11, d:9,   wallH:2.9,  roofH:8.6,  eave:3.0,
+    body:C_HINOKI, posts:C_SHU,
+    desc:"楼門の内の舞台。大宮薪能もここで行われる。",
+    u:"https://www.openstreetmap.org/way/247987399" },
+  { key:"haiden", n:"拝殿",  lon:139.62973, lat:35.91672, w:17, d:9,   wallH:4.2,  roofH:11.6, eave:3.0, nagare:2.6,
+    body:C_HINOKI,
+    desc:"参拝と祈祷の場。舞殿の奥に建つ。",
+    u:"https://www.openstreetmap.org/way/271399601" },
+  { key:"honden", n:"本殿",  lon:139.62965, lat:35.91688, w:11, d:7,   wallH:4.4,  roofH:11.8, eave:2.6, nagare:3.4,
+    body:C_HINOKI,
+    desc:"昭和15年造営の流造。須佐之男命ほかを祀る。",
+    u:"https://musashiichinomiya-hikawa.or.jp/keidai/" },
+];
+function buildHalls() { for (const h of HALLS) buildHall(h); }
+
+/* ── 隠れているあいだも読み込みを進める ────────────────────────────
+   ブラウザは、裏に回ったタブの描画呼び出し（requestAnimationFrame）をほぼ止める。
+   CesiumJS は描画のたびにタイルを取りに行くので、**止まると受信も止まる**。
+   「開いて、別の窓を見て、戻ってきたらまだ真っ黒」という状態はこれで起きる。
+   隠れているあいだだけ、自前の時計で 10 回/秒ほど回して受信を進める。
+   表に戻ればブラウザの描画に戻すので、電池を余計に食わない。 */
+let hiddenTimer = null;
+function pumpWhileHidden() {
+  if (document.hidden) {
+    if (hiddenTimer === null) hiddenTimer = setInterval(() => {
+      try { if (viewer && !viewer.isDestroyed()) viewer.render(); } catch (_) {}
+    }, 100);
+  } else if (hiddenTimer !== null) { clearInterval(hiddenTimer); hiddenTimer = null; }
+}
+document.addEventListener("visibilitychange", pumpWhileHidden);
+window.addEventListener("pagehide", () => { if (hiddenTimer !== null) { clearInterval(hiddenTimer); hiddenTimer = null; } });
+
+/* ── ⚠️⚠️⚠️ 真因（2026-08-28・実証済み）─────────────────────────────────
+   「地図も 3D 建築も出ない」の正体は、**ファイルを直接ひらいたこと**だった。
+
+   ブラウザは、`file://` でひらいた頁に「オリジン null」を与える。
+   その頁は **Web Worker を一つも作れない**（Chrome で実測）：
+
+     new Worker("…/Workers/createVerticesFromHeightmap.js")
+     → Script at '…' cannot be accessed from origin 'null'.
+
+   CesiumJS は、地面の形（頂点）を **Worker の中で組み立てる**。作れなければ
+   最上段のタイルが永久に「組み立て中」のまま止まり、こうなる：
+
+     ・地面が一枚も描かれない        （地表 0枚）
+     ・だから画像を取りに行かない    （要求 0・成功 0・失敗 0）
+     ・建物の中身もほどけない        （建物 受信中・0枚）
+     ・でも描画そのものは回り続ける  （描画 358コマ）
+
+   v4.2〜v4.8 の診断が指していた数字は、**全部これ一つの影**だった。
+   回線でも、配信元でも、待ち行列でも、拡張機能でもない。**エラーも出ない**ので
+   五回の改修が的を外した。ここで止める。
+
+   ⚠️ これは直せない。ブラウザの安全設計そのもので、CesiumJS は Worker 無しでは
+      地面を描けない。だから **ひらき方を変えてもらう**しかない ──
+      そのために、はっきり言う画面と、ダブルクリックで開く起動ファイルを用意した。 */
+const OPAQUE = (location.origin === "null" || location.protocol === "file:");
+
+/* ── ⭐ file:// で直接ひらいても動くようにする肩代わり（2026-08-28）────────────
+   ブラウザは file:// の頁に「オリジン null」を与え、**Web Worker を一つも作らせない**。
+   実測（上原さんの Chrome・file:// の実頁）：
+
+     new Worker("./なにか.js")            → cannot be accessed from origin 'null'
+     new Worker(blobURL, {type:"module"}) → onerror
+     new Worker(blobURL)（中身を全部埋込） → **作れる**
+     import("https://…/Workers/…js")      → **主スレッドなら取り込める**
+     fetch(地理院 / PLATEAU / iNat)        → **200**
+
+   CesiumJS は地面の頂点を Worker の中で組み立てるので、Worker が作れないと
+   最上段のタイルが「組み立て中」で永久に止まる（＝地図も建物も出ない）。
+
+   ⭐ そこで、**Worker に投げる仕事を主スレッドでそのまま走らせる**。
+      CesiumJS の worker 用モジュールは、主スレッドへ取り込むと `self.onmessage` に
+      仕事の受け口を据える。それを捕まえて、こちらから直に呼ぶ。
+      **走るのは CesiumJS 自身のコードなので、計算結果は Worker と同じ**。
+      主スレッドが少し重くなるが、この一帯は平らな地形で枚数も少ないので体感は変わらない。 */
+function installMainThreadTasks() {
+  if (!window.Cesium || !Cesium.TaskProcessor) return false;
+  const handlers = new Map();     // worker の道 → 受け口
+  const pending  = new Map();     // 仕事の番号 → 待っている人
+  let nextId = 0, chain = Promise.resolve();
+
+  /* 受け口は仕事が済むと postMessage で返す。主スレッドではそれが window 宛になるので、
+     こちらで横取りして、待っている人へ直に渡す。 */
+  const origPost = window.postMessage.bind(window);
+  window.postMessage = function (msg, a, b) {
+    if (msg && typeof msg === "object" && typeof msg.id === "string" && pending.has(msg.id)) {
+      const p = pending.get(msg.id); pending.delete(msg.id);
+      if (msg.error) {
+        const e = new Error((msg.error && msg.error.message) || String(msg.error));
+        e.name = (msg.error && msg.error.name) || "RuntimeError";
+        p.reject(e);
+      } else p.resolve(msg.result);
+      return;
+    }
+    return a === undefined ? origPost(msg) : origPost(msg, a, b);
+  };
+
+  function handlerFor(workerPath) {
+    if (handlers.has(workerPath)) return handlers.get(workerPath);
+    /* 取り込みは一つずつ。self.onmessage を捕まえる隙に別の取り込みが割り込むと取り違える。 */
+    const p = chain = chain.then(async () => {
+      const file = /\.js$/.test(workerPath) ? workerPath : workerPath + ".js";
+      const prev = self.onmessage;
+      self.onmessage = null;
+      await import(Cesium.buildModuleUrl("Workers/" + file));
+      const h = self.onmessage;
+      self.onmessage = prev;
+      if (typeof h !== "function") throw new Error("受け口が見つからない: " + file);
+      return h;
+    });
+    handlers.set(workerPath, p);
+    return p;
+  }
+
+  /* ⚠️ 本物の Worker は、渡す値を「構造化複製」してから届ける＝向こうは自分の複製を持つ。
+     主スレッドで直に呼ぶと同じ物を共有してしまい、向こうが書き換えるとこちらが壊れる。
+     そこで**同じように複製してから渡す**（Cesium の値はどれも素の数と配列なので複製できる）。 */
+  function handOver(params) {
+    try { return structuredClone(params); } catch (_) { return params; }
+  }
+
+  function call(h, message) {
+    return new Promise((resolve, reject) => {
+      const id = "mt" + (nextId++);
+      pending.set(id, { resolve, reject });
+      try { h({ data: Object.assign({ id, baseUrl: Cesium.buildModuleUrl(""), canTransferArrayBuffer: false }, message) }); }
+      catch (e) { pending.delete(id); reject(e); }
+    });
+  }
+
+  Cesium.TaskProcessor.prototype.scheduleTask = function (parameters) {
+    const wp = this._workerPath;
+    return handlerFor(wp).then(h => call(h, { parameters: handOver(parameters) }));
+  };
+
+  /* Draco（建物の圧縮をほどく）は WebAssembly を要る。
+     本物の Worker と同じ手順を主スレッドで踏む ── wasm を自分で取ってきて、受け口へ渡す。
+     ⭐ PLATEAU の建物は KHR_draco_mesh_compression が **必須**指定なので、これが無いと建物が出ない。 */
+  Cesium.TaskProcessor.prototype.initWebAssemblyModule = function (options) {
+    if (this._webAssemblyPromise) return this._webAssemblyPromise;
+    const wp = this._workerPath;
+    const p = (async () => {
+      const cfg = { modulePath: undefined, wasmBinaryFile: undefined, wasmBinary: undefined };
+      if (options && options.modulePath) cfg.modulePath = Cesium.buildModuleUrl(options.modulePath);
+      if (options && options.wasmBinaryFile) {
+        cfg.wasmBinaryFile = Cesium.buildModuleUrl(options.wasmBinaryFile);
+        cfg.wasmBinary = await Cesium.Resource.fetchArrayBuffer({ url: cfg.wasmBinaryFile });
+      }
+      const h = await handlerFor(wp);
+      return await call(h, { parameters: { webAssemblyConfig: cfg } });
+    })();
+    this._webAssemblyPromise = p;
+    return p;
+  };
+  return true;
+}
+
+/* 肩代わりが本当に効いたかを、地形を一枚組ませて確かめる。
+   ここで確かめておかないと、「動いているつもりで真っ黒」という v4.8 の失敗を繰り返す。 */
+async function mainThreadTasksWork() {
+  try {
+    const tp = new Cesium.EllipsoidTerrainProvider();
+    const td = await tp.requestTileGeometry(0, 0, 0);
+    const mesh = td.createMesh({ tilingScheme: tp.tilingScheme, x: 0, y: 0, level: 0 });
+    const ok = await Promise.race([
+      Promise.resolve(mesh).then(m => !!(m && m.vertices && m.vertices.length)),
+      new Promise(r => setTimeout(() => r(false), 12000)),
+    ]);
+    return ok;
+  } catch (_) { return false; }
+}
+
+/* 肩代わりも効かなかったときだけ、ひらき方を案内する（真っ黒で待たせない） */
+function tellHowToOpen() {
+  const cmd = "cd ~/Desktop/Claude && python3 -m http.server 4611";
+  const url = "http://localhost:4611/03_感覚_Art/06_知覚アプリ/02_氷川重奏/index.html";
+  const el = document.createElement("div");
+  el.id = "openHelp";
+  el.innerHTML =
+    '<div class="oh-box glass">' +
+      '<div class="oh-h">この開き方では、地図が出せません</div>' +
+      '<p class="oh-p">いま、この頁は <b>ファイルを直接ひらいた状態</b>（<span class="oh-c">file://</span>）です。' +
+      'ふだんはこの状態でも動くように作ってありますが、いまはその肩代わりが働きませんでした' +
+      '（ブラウザの版や設定によります）。<b>下のどちらかで開けば、確実に出ます。</b></p>' +
+      '<div class="oh-h2">ひらき方（どちらか一つ）</div>' +
+      '<p class="oh-p"><b>1.</b> このフォルダの <span class="oh-c">氷川重奏をひらく.command</span> をダブルクリックする' +
+      '（Windows は <span class="oh-c">氷川重奏をひらく.bat</span>）。それだけで開きます。</p>' +
+      '<p class="oh-p"><b>2.</b> または、ターミナルで下の一行を実行してから、その下の住所をひらく。</p>' +
+      '<div class="oh-code"><code id="ohCmd">' + cmd + '</code><button class="oh-cp" id="ohCopy">写す</button></div>' +
+      '<div class="oh-code"><code>' + url + '</code></div>' +
+      '<p class="oh-note">※ この案内は、3D を始める前に出しています。真っ黒な画面のまま待たせないためです。</p>' +
+    '</div>';
+  document.body.appendChild(el);
+  const btn = document.getElementById("ohCopy");
+  if (btn) btn.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(cmd); btn.textContent = "写した"; }
+    catch (_) {
+      const r = document.createRange(); r.selectNode(document.getElementById("ohCmd"));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      btn.textContent = "選んだ（⌘C）";
+    }
+    setTimeout(() => { btn.textContent = "写す"; }, 2400);
+  });
+}
+
+/* ── 起動 ── */
+async function boot() {
+  buildVoiceChips();
+  if (OPAQUE) {
+    /* ファイルを直接ひらいた頁。Worker の肩代わりを入れ、**効いたことを確かめてから**進む。 */
+    const installed = installMainThreadTasks();
+    if (!installed || !(await mainThreadTasksWork())) { tellHowToOpen(); return; }
+  }
+  try {
+    if (!window.Cesium) throw new Error("CesiumJS が読み込めなかった");
+
+    /* 画像は CesiumJS の道をそのまま使う（2026-08-28 に v4.8 の自前取得を撤去）。
+       v4.8 は「Cesium の画像取得が壊れている」と読んで requestImage を差し替えていたが、
+       壊れていたのは画像取得ではなく Worker だった。自前取得は Cesium の
+       再投影・親タイルからの引き継ぎ・失敗時の再試行を全部素通りさせるので、戻す。 */
+    const photoProv = new Cesium.UrlTemplateImageryProvider({
+      url: CFG.photo, minimumLevel: 2, maximumLevel: 18,
+      credit: "地理院タイル（シームレス空中写真）",
+      /* 日本の外は配信が無い（z2 の 7/3 などが 404 を返すのを実測）。
+         範囲を切っておくと、無い所へ取りに行かずに済む＝出るのが速く、通信記録も静かになる。
+         範囲の外は地の色（globe.baseColor）で塗られるので、地球が欠けることはない。 */
+      rectangle: Cesium.Rectangle.fromDegrees(122.0, 20.0, 154.0, 46.0),
+    });
+
+    viewer = new Cesium.Viewer("cesium", {
+      baseLayer: new Cesium.ImageryLayer(photoProv),
+      /* 地形は平らな楕円体。この一帯の起伏は参道 1.9m・台地と低地 10m ほどで、
+         誇張しなければほとんど見えない（⚠️ 標高の数値そのものは捨てていない）。 */
+      terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+      baseLayerPicker:false, geocoder:false, timeline:false, animation:false, homeButton:false,
+      sceneModePicker:false, navigationHelpButton:false, fullscreenButton:false,
+      infoBox:false, selectionIndicator:false, shadows:false,
+    });
+    const sc = viewer.scene;
+    /* 写真が届く前の地の色。CesiumJS は画像の無い面をこの色で塗るので、
+       写真が一枚も来なくても地面は必ず描かれる（真っ黒にならない）。 */
+    sc.globe.baseColor = Cesium.Color.fromCssColorString("#1a211c");
+    sc.backgroundColor = Cesium.Color.fromCssColorString("#03080c");
+    if (sc.skyAtmosphere) { sc.skyAtmosphere.show = true; sc.skyAtmosphere.hueShift = -0.05; }
+    if (sc.fog) { sc.fog.enabled = true; sc.fog.density = 0.00010; }
+    sc.screenSpaceCameraController.enableCollisionDetection = false;
+    sc.msaaSamples = 1;                       // 高精細画面では 4 倍サンプリングがそのまま重さになる
+    /* ⚠️ 要求の順番待ち（RequestScheduler）は既定のまま使う。
+       v4.5 で「詰まっている」と読んで切ったが、詰まりの正体は Worker だった。
+       切ると全タイルが一斉にブラウザへ流れ、同じ配信元への行列で
+       **手前に要る一枚が後回しになる**（実測：最初の地図まで 10〜16 秒）。
+       既定に戻すと、近いタイルから順に取りに行く。 */
+    sc.globe.maximumScreenSpaceError = 2.5;   // 既定 2 よりわずかに粗く＝タイル数を約 3 割減
+    sc.globe.preloadSiblings = false;         // 隣のタイルを先読みしない
+
+    /* 画像レイヤは一枚だけ。v2《氷川参道の積層》と同じ見え方 */
+    const base = viewer.imageryLayers.get(0);
+    base.brightness = 0.62; base.saturation = 0.55; base.contrast = 1.08;
+
+    /* ── 出ないときに、本当のことを言う ────────────────────────────
+       ⚠️ v4.8 までの診断は「地面と建物は出ています」と決め打ちで書いていた。
+          出ていないのに出ていると言う一行は、原因探しを五回まわり道させた。
+          ここでは**測った数字だけ**を出し、決め打ちの説明はしない。 */
+    let photoOk = 0, photoNg = 0;
+    photoProv.errorEvent.addEventListener(() => { photoNg++; });
+    const seen = new WeakSet();
+    setTimeout(() => {
+      const surf = sc.globe._surface;
+      const ground = surf._tilesToRender ? surf._tilesToRender.length : 0;
+      if (ground > 0) return;                 // 地面が出ていれば何も言わない
+      const frames = sc.frameState.frameNumber;
+      /* ⚠️ まず描画そのものが回っているかを見る。ブラウザは裏に回った窓の描画をほぼ止めるので、
+         そのときに「届いていません」と言うのは嘘になる（12 秒あれば通常 500 コマは回る）。 */
+      if (frames < 60) {
+        bootMsg("この窓が裏に回っているあいだ、ブラウザが描画を止めます（描画 " + frames +
+                "コマ）。窓を前に出すと進みます。", true);
+        return;
+      }
+      const ts = tilesetRef;
+      bootMsg("地面がまだ描けていません ─ 地表 " + ground + "枚／建物 " +
+              (ts ? (ts.tilesLoaded ? "読込済" : "受信中") : "未受信") +
+              "／写真 失敗" + photoNg + "／描画 " + frames + "コマ", true);
+    }, 12000);
+
+    /* 夕刻の光を固定（杜に影の気配を与える） */
+    viewer.clock.currentTime = Cesium.JulianDate.fromIso8601("2026-08-27T08:20:00Z");  // JST 17:20
+    viewer.clock.shouldAnimate = false;
+
+    for (const v of VOICES) PULSE[v.key] = null;
+    PULSE.life = pulseProp(7,  0.00);
+    PULSE.tree = pulseProp(5,  0.22);
+    PULSE.hist = pulseProp(9,  0.44);
+    PULSE.cult = pulseProp(9,  0.66);
+
+    /* ① まず視点を据える。ここが最初の一枚になる。
+       ⚠️ 建物の受信を await で待ってからでは、待っているあいだ既定の宇宙空間が映る。 */
+    const c0 = CAMS.home;
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(c0.lon, c0.lat, c0.h),
+      orientation: { heading: Cesium.Math.toRadians(c0.heading), pitch: Cesium.Math.toRadians(c0.pitch), roll: 0 },
+    });
+
+    /* ② 建物（PLATEAU）は待たずに走らせる。届いた順に画面へ足す */
+    Cesium.Cesium3DTileset.fromUrl(CFG.tileset, { maximumScreenSpaceError: 32, skipLevelOfDetail: true })
+      .then(ts => {
+        const c = Cesium.Cartographic.fromCartesian(ts.boundingSphere.center);
+        const a = Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, 0);
+        const b = Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, CFG.heightOffset);
+        ts.modelMatrix = Cesium.Matrix4.fromTranslation(Cesium.Cartesian3.subtract(b, a, new Cesium.Cartesian3()));
+        ts.style = new Cesium.Cesium3DTileStyle({ color: "color('#dfe9ee', 0.92)" });   // v2 と同じ淡い青白
+        /* 境内は PLATEAU の建物を切り抜き、代わりに社殿の象りを置く（2026-08-28 上原さん指示）。
+           ⚠️ 多角形の切り抜きは WebGL2 と浮動小数テクスチャを要る。使えない環境では**建物を切らない**
+              （切り抜きに失敗して建物ごと消えるより、社殿の象りと重なって見えるほうがまし）。 */
+        try {
+          const ctx = sc.context;
+          if (Cesium.ClippingPolygonCollection && ctx && ctx.webgl2 && ctx.floatingPointTexture) {
+            ts.clippingPolygons = new Cesium.ClippingPolygonCollection({
+              polygons: [ new Cesium.ClippingPolygon({
+                positions: Cesium.Cartesian3.fromDegreesArray(KEIDAI.flat()) }) ],
+              inverse: false,
+            });
+          }
+        } catch (_) { ts.clippingPolygons = undefined; }
+        ts.show = voiceOn("bldg");
+        sc.primitives.add(ts); tilesetRef = ts;
+        setCount("bldg", "大宮区");
+      })
+      .catch(() => setCount("bldg", "未受信"));
+
+    /* ③ 点は**その場で全部積む**。待たない。
+       ⚠️ 2026-08-28 上原さん指示：「起動した直後から、地図・3D建築・ポイントなど全てを表示する」。
+          地図の受信を待ってから積む作りにしていたが、待つ設計そのものが間違いだった。
+          最初のフレームが描かれる前に、地上のものはすべて揃っている状態にする。 */
+    drawScape(); buildTorii(); buildHalls(); buildSansha(); buildStations();
+    buildHistory(); buildCulture(); buildCityTrees(); buildTrees();
+    loadInat();                          // これだけは網の向こうなので、届いた順に足す
+
+    /* ホバーで指カーソル */
+    let busy = false;
+    viewer.screenSpaceEventHandler.setInputAction(m => {
+      if (busy) return; busy = true;
+      requestAnimationFrame(() => {
+        try { const p = sc.pick(m.endPosition);
+              viewer.canvas.style.cursor = (Cesium.defined(p) && p.id && p.id._d) ? "pointer" : ""; } catch(_){}
+        busy = false;
+      });
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+    viewer.screenSpaceEventHandler.setInputAction(evt => {
+      const p = sc.pick(evt.position);
+      if (Cesium.defined(p) && p.id && p.id._d) openCard(p.id._d);
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    installWalkLoop();
+    pumpWhileHidden();
+
+  } catch (e) {
+    document.querySelectorAll(".cbtn").forEach(b => { if (b.id !== "srcBtn") b.disabled = true; });
+    bootMsg("3D が届かなかった（" + e.message + "）", true);
+  }
+}
+
+/* ── 杜の風景（参道の光の線・境内・大宮公園・氷川三社の線） ── */
+function drawScape() {
+  const ent = viewer.entities;
+  /* 参道の光の線は引かない（2026-08-28 上原さん指示）。
+     並木 697 本の点が、そのまま参道の線になる。 */
+  /* 氷川神社 社殿域 */
+  ent.add({ polygon: {
+    hierarchy: Cesium.Cartesian3.fromDegreesArray(KEIDAI.flat()),
+    material: Cesium.Color.fromCssColorString("#e8cf5c").withAlpha(0.045),
+    outline: true, outlineColor: Cesium.Color.fromCssColorString("#e8cf5c").withAlpha(0.5), outlineWidth: 2,
+    height: 1.5, }});
+  /* 大宮公園（杜の広がり） */
+  ent.add({ polygon: {
+    hierarchy: Cesium.Cartesian3.fromDegreesArray(OMIYA_PARK.flat()),
+    material: Cesium.Color.fromCssColorString("#7fd39a").withAlpha(0.035),
+    outline: true, outlineColor: Cesium.Color.fromCssColorString("#7fd39a").withAlpha(0.38), outlineWidth: 1.5,
+    height: 1.2, }});
+  /* 氷川三社の線（実測で方位約 120°・中山神社のずれ 0.9%） */
+  ent.add({ polyline: {
+    positions: Cesium.Cartesian3.fromDegreesArrayHeights([139.62965,35.91688,6, 139.66399,35.90019,6, 139.69376,35.88692,6]),
+    width: 2,
+    material: new Cesium.PolylineDashMaterialProperty({
+      color: Cesium.Color.fromCssColorString("#e8cf5c").withAlpha(0.34), dashLength: 22 }),
+  }});
+  /* 見沼の方角に印（範囲のポリゴンは公開されていないため点と注記で示す） */
+  const m = ent.add({
+    position: Cesium.Cartesian3.fromDegrees(139.6700, 35.9200, 8),
+    point: { pixelSize: 7, color: Cesium.Color.fromCssColorString("#e8cf5c").withAlpha(0.7),
+             outlineColor: Cesium.Color.fromCssColorString("rgba(232,207,92,0.2)"), outlineWidth: 8,
+             disableDepthTestDistance: Number.POSITIVE_INFINITY },
+    label: { text: "見沼田んぼ", font: "12px sans-serif", fillColor: Cesium.Color.fromCssColorString("#e8cf5c"),
+             showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.55)"),
+             pixelOffset: new Cesium.Cartesian2(0, -18), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+             scaleByDistance: new Cesium.NearFarScalar(2000, 1.0, 30000, 0.5) },
+  });
+  m._d = { type:"minuma" };
+  V.cult.ents.push(m);
+}
+
+/* ── 鳥居の 3D（明神鳥居を柱と梁で象る。象徴的な表現） ── */
+const TORII_COLOR = Cesium.Color.fromCssColorString("#e8a06a");
+function buildTorii() {
+  for (const t of TORII) {
+    const half = t.w / 2, pil = t.h * 0.055;          // 柱の太さ
+    const legs = [-half, half];
+    for (const dx of legs) {                           // 二本の柱
+      const [lon, lat] = metersLL(t.lon, t.lat, dx, 0);
+      const e = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(lon, lat, t.h / 2),
+        cylinder: { length: t.h, topRadius: pil * 0.85, bottomRadius: pil,
+                    material: TORII_COLOR.withAlpha(0.92) },
+      });
+      e._d = { type:"torii", t }; V.cult.ents.push(e);
+    }
+    // 笠木（上の梁・少し長い）／島木／貫
+    const beams = [ [t.h * 0.985, t.w * 1.30, pil * 0.9],
+                    [t.h * 0.925, t.w * 1.20, pil * 0.7],
+                    [t.h * 0.700, t.w * 1.06, pil * 0.55] ];
+    for (const [hh, len, th] of beams) {
+      const e = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(t.lon, t.lat, hh),
+        box: { dimensions: new Cesium.Cartesian3(len, th * 1.6, th * 1.6),
+               material: TORII_COLOR.withAlpha(0.92) },
+      });
+      e._d = { type:"torii", t }; V.cult.ents.push(e);
+    }
+    // 額束
+    const e2 = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(t.lon, t.lat, t.h * 0.815),
+      box: { dimensions: new Cesium.Cartesian3(pil * 1.6, pil * 1.2, t.h * 0.17),
+             material: TORII_COLOR.withAlpha(0.92) },
+    });
+    e2._d = { type:"torii", t }; V.cult.ents.push(e2);
+    // 名前
+    const lab = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(t.lon, t.lat, t.h + 6),
+      label: { text: t.n, font: "12px sans-serif", fillColor: Cesium.Color.fromCssColorString("#f6d7bc"),
+               showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.55)"),
+               disableDepthTestDistance: Number.POSITIVE_INFINITY,
+               scaleByDistance: new Cesium.NearFarScalar(900, 1.0, 6000, 0.0) },
+    });
+    lab._d = { type:"torii", t }; V.cult.ents.push(lab);
+  }
+}
+/* 中心から東西・南北へ meters ずらした [lon, lat] */
+function metersLL(lon, lat, dx, dy) {
+  return [ lon + dx / (M_PER_DEG * Math.cos(lat * Math.PI / 180)), lat + dy / M_PER_DEG ];
+}
+
+/* ── 氷川三社（光の柱で示す） ── */
+function buildSansha() {
+  for (const s of SANSHA) {
+    /* 光の柱（オーラ）は引かない（2026-08-28 上原さん指示）。名と点だけを置く。 */
+    const lab = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(s.lon, s.lat, 28),
+      point: { pixelSize: 10, color: Cesium.Color.fromCssColorString("#f2e6b0"),
+               outlineColor: Cesium.Color.fromCssColorString("rgba(232,207,92,0.25)"), outlineWidth: 8,
+               disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      label: { text: s.n, font: "600 13px sans-serif", fillColor: Cesium.Color.fromCssColorString("#f6ecc4"),
+               showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.62)"),
+               pixelOffset: new Cesium.Cartesian2(0, -19), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+               scaleByDistance: new Cesium.NearFarScalar(3000, 1.0, 30000, 0.55) },
+    });
+    lab._d = { type:"sansha", s }; V.cult.ents.push(lab);
+  }
+}
+
+/* ── 駅（文字だけ・作品の調子に合わせた淡い青灰） ── */
+function buildStations() {
+  for (const st of STATIONS) {
+    viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(st.lon, st.lat, 5),
+      point: { pixelSize: 4, color: Cesium.Color.fromCssColorString("#aac4d2").withAlpha(0.75),
+               disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      label: { text: st.n, font: "11px sans-serif", fillColor: Cesium.Color.fromCssColorString("#c3d8e4"),
+               showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.5)"),
+               pixelOffset: new Cesium.Cartesian2(0, -13), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+               scaleByDistance: new Cesium.NearFarScalar(2500, 1.0, 16000, 0.35) },
+    });
+  }
+}
+
+/* ── 樹木のレイヤ ── */
+/* 割合の表から一つ引く（％の配列・合計 100 前後） */
+function pickIndex(pct) {
+  let r = rnd() * pct.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < pct.length; i++) { r -= pct[i]; if (r <= 0) return i; }
+  return pct.length - 1;
+}
+function speciesFor(si) { return SPECIES_NAMES[pickIndex(SPECIES_BY_SECTION[si])]; }
+function girthFor(si) {
+  const k = pickIndex(GIRTH_BY_SECTION[si]), [lo, hi] = GIRTH_CLASSES[k];
+  return { m: lo + rnd() * (hi - lo), cls: k };
+}
+/* 樹高。⚠️ 資料の樹高は**目測の概数**（三角測量はサンプル樹木のみ・p.2）。
+   ここではその分布から引いている（原典の平均 13.3m。この階級の取り方だと期待値は約 14.0m）。 */
+function sampleHeight() {
+  const r = rnd();
+  if (r < 0.053) return 3 + rnd() * 2;
+  if (r < 0.272) return 5 + rnd() * 5;
+  if (r < 0.575) return 10 + rnd() * 5;
+  if (r < 0.808) return 15 + rnd() * 5;
+  return 20 + rnd() * 5;
+}
+/* 樹木番号 → 軸上距離（区間内で線形内挿・±30m 程度の誤差） */
+function numToS(side, num) {
+  for (const [a, b, si] of NUM_RANGE[side]) {
+    if (num >= a && num <= b) {
+      const sec = TREE_SECTIONS[si];
+      return sec.s0 + (sec.s1 - sec.s0) * ((num - a + 0.5) / (b - a + 1));
+    }
+  }
+  return SANDO_LEN / 2;
+}
+function buildTrees() {
+  const ent = viewer.entities;
+  /* 巨木 21 本は 697 本の内数。概略の点をその分だけ減らし、合計を 697 に保つ */
+  const bigIn = {};
+  for (const [id] of BIG_TREES) {
+    const side = id[0] === "E" ? "east" : "west";
+    const s = numToS(id[0], Number(id.slice(2)));
+    let si = TREE_SECTIONS.findIndex(x => s >= x.s0 && s <= x.s1);
+    if (si < 0) si = 0;
+    const k = si + ":" + side; bigIn[k] = (bigIn[k] || 0) + 1;
+  }
+  TREE_SECTIONS.forEach((sec, si) => {
+    for (const side of ["east", "west"]) {
+      const sign = side === "east" ? 1 : -1;
+      const n = sec[side] - (bigIn[si + ":" + side] || 0);
+      for (let i = 0; i < n; i++) {
+        const s = sec.s0 + (sec.s1 - sec.s0) * ((i + 0.5 + (rnd() - 0.5) * 0.7) / n);
+        const p = alongSando(s);
+        const off = sign * (sec.half + (rnd() - 0.5) * (sec.spread ?? 1.6));
+        const [lon, lat] = offsetLL(p, off);
+        const sp = speciesFor(si), h = sampleHeight(), gir = girthFor(si);
+        const shape = pickIndex(SHAPE_BY_SECTION[si]), vigor = pickIndex(VIGOR_BY_SECTION[si]);
+        const e = ent.add({
+          position: Cesium.Cartesian3.fromDegrees(lon, lat, 2 + h * 0.12),
+          /* 透けさせない。樹高は「点の大きさ」で示し、色は一定に保つ（薄い個体を作らない） */
+          point: { pixelSize: PULSE.tree, color: Cesium.Color.fromCssColorString(COLORS.tree).withAlpha(0.95),
+                   outlineColor: Cesium.Color.fromCssColorString("rgba(127,211,154,0.22)"), outlineWidth: 4,
+                   scaleByDistance: new Cesium.NearFarScalar(300, 1.5, 9000, 0.5),
+                   disableDepthTestDistance: Number.POSITIVE_INFINITY },
+          show: voiceOn("tree"),
+        });
+        e._d = { type:"tree", sp, h, gir: gir.m, shape, vigor, si, sec: sec.name };
+        V.tree.ents.push(e);
+      }
+    }
+  });
+  /* 巨木 21 本（樹木番号から位置を内挿・実測の目通りと樹高） */
+  for (const [id, sp, mawari, h, designated] of BIG_TREES) {
+    const side = id[0] === "E" ? "east" : "west", num = Number(id.slice(2));
+    const s = numToS(id[0], num), p = alongSando(s);
+    const sec = TREE_SECTIONS.find(x => s >= x.s0 && s <= x.s1) || TREE_SECTIONS[0];
+    const [lon, lat] = offsetLL(p, (side === "east" ? 1 : -1) * (sec.half + 0.5));
+    const e = ent.add({
+      position: Cesium.Cartesian3.fromDegrees(lon, lat, 3 + h * 0.2),
+      /* 巨木は概略の点よりはっきり大きく。天然記念物はさらに白く大きく */
+      point: { pixelSize: designated ? 22 : 17,
+               color: Cesium.Color.fromCssColorString(designated ? "#ddfbe8" : "#a8ecc4").withAlpha(1.0),
+               outlineColor: Cesium.Color.fromCssColorString(designated ? "rgba(221,251,232,0.30)" : "rgba(168,236,196,0.24)"),
+               outlineWidth: designated ? 12 : 9,
+               scaleByDistance: new Cesium.NearFarScalar(400, 1.25, 14000, 0.62),
+               disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      show: voiceOn("tree"),
+    });
+    e._d = { type:"bigtree", id, sp, mawari, h, designated };
+    V.tree.ents.push(e);
+  }
+  setCount("tree", `${TREE_TOTAL}＋街 ${CITY_TREES.length}`);
+}
+
+/* ── 街の木（OSM の単木） ── */
+const DENOTATION_JA = { natural_monument:"天然記念物", avenue:"並木", urban:"街の木",
+                        park:"公園の木", memorial:"記念樹", agricultural:"農地の木", landmark:"目印の木" };
+function buildCityTrees() {
+  for (const t of CITY_TREES) {
+    const marked = t.d === "natural_monument" || !!t.n;
+    const e = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(t.lon, t.lat, 2.5),
+      point: { pixelSize: marked ? 14 : PULSE.tree,
+               color: Cesium.Color.fromCssColorString(marked ? "#c9f2d8" : "#5fae83").withAlpha(0.95),
+               outlineColor: Cesium.Color.fromCssColorString("rgba(95,174,131,0.20)"), outlineWidth: marked ? 8 : 3,
+               scaleByDistance: new Cesium.NearFarScalar(400, 1.3, 12000, 0.45),
+               disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      show: voiceOn("tree"),
+    });
+    e._d = { type:"citytree", t };
+    V.tree.ents.push(e);
+  }
+}
+
+/* ── 歴史のレイヤ ── */
+function buildHistory() {
+  let histIdx = 0;
+  for (const ev of HISTORY) {
+    const legend = /伝承|社記/.test(ev.k);   // 「〜と伝わる」は社記も伝承として扱う
+    const e = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(ev.lon, ev.lat, 12),
+      point: { pixelSize: PULSE.hist,
+               color: Cesium.Color.fromCssColorString(legend ? "#f0c19a" : COLORS.hist).withAlpha(0.95),
+               outlineColor: Cesium.Color.fromCssColorString("rgba(232,150,92,0.22)"), outlineWidth: 7,
+               disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      label: { text: yearLabel(ev.y), font: "11px monospace", fillColor: Cesium.Color.fromCssColorString("#f7ddc6"),
+               showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.5)"),
+               pixelOffset: new Cesium.Cartesian2(0, -15), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+               scaleByDistance: new Cesium.NearFarScalar(800, 1.0, 9000, 0.0) },
+      show: voiceOn("hist"),
+    });
+    e._d = { type:"history", ev, legend };
+    V.hist.ents.push(e);
+
+  }
+  setCount("hist", HISTORY.length);
+}
+
+/* ── 文化のレイヤ ── */
+function buildCulture() {
+  for (const c of CULTURE) {
+    const fes = c.g === "祭事";
+    const e = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat, fes ? 22 : 9),
+      point: { pixelSize: PULSE.cult, color: Cesium.Color.fromCssColorString(COLORS.cult).withAlpha(0.95),
+               outlineColor: Cesium.Color.fromCssColorString("rgba(232,207,92,0.22)"), outlineWidth: 7,
+               disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      label: { text: c.n, font: "10px sans-serif", fillColor: Cesium.Color.fromCssColorString("#f2e6b0"),
+               showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.5)"),
+               pixelOffset: new Cesium.Cartesian2(0, -15), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+               scaleByDistance: new Cesium.NearFarScalar(600, 1.0, 4000, 0.0) },
+      show: voiceOn("cult"),
+    });
+    e._d = { type:"culture", c };
+    V.cult.ents.push(e);
+  }
+  setCount("cult", CULTURE.length);
+}
+
+/* ── 生きもののレイヤ（iNaturalist） ── */
+let LIFE_OBSCURED = 0;   // 位置をぼかされていて地図に出せなかった記録の数
+async function loadInat() {
+  setCount("life", "受信中");
+  try {
+    const B = CFG.bbox;
+    /* captive=false ＝ 飼育・栽培の記録を除く。この範囲には大宮公園小動物園が含まれ、
+       除かないと飼育個体が「杜の生きもの」として立ってしまう（調査の警告どおり） */
+    /* 大宮区の全域は 450 件ほどあるので、1 頁 200 件を 2 回に分けて受ける（作法：1 秒に 1 回） */
+    const q = `${CFG.inat}?nelat=${B.nelat}&nelng=${B.nelng}&swlat=${B.swlat}&swlng=${B.swlng}` +
+              `&captive=false&per_page=200&locale=ja&order_by=observed_on&order=desc`;
+    const j = await fetchJSON(q + "&page=1");
+    let rows = (j.results || []).slice();
+    if ((j.total_results || 0) > rows.length) {
+      await new Promise(r => setTimeout(r, 1100));
+      try { const j2 = await fetchJSON(q + "&page=2"); rows = rows.concat(j2.results || []); } catch (_) {}
+    }
+    /* ⚠️ iNaturalist は希少種などの記録の位置を意図的にぼかす（obscured）。
+       この範囲では 452 件中 54 件がそれで、公開される精度は約 28.6km 四方。
+       ぼかされた点を地図に置くと「そこに居た」という嘘になるので、**地図には出さず、数だけ名乗る**。 */
+    let obscured = 0;
+    for (const o of rows) {
+      if (!o.geojson || !o.geojson.coordinates) continue;
+      if (o.obscured) { obscured++; continue; }
+      const [lon, lat] = o.geojson.coordinates;
+      const e = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(lon, lat, 6),
+        point: { pixelSize: PULSE.life, color: Cesium.Color.fromCssColorString(COLORS.life).withAlpha(0.92),
+                 outlineColor: Cesium.Color.fromCssColorString("rgba(92,200,224,0.20)"), outlineWidth: 6,
+                 disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        show: voiceOn("life"),
+      });
+      e._d = { type:"inat", o };
+      V.life.ents.push(e);
+    }
+    /* 描いた数と該当総数が違うときは、両方を出す（届いた値を素通しする） */
+    const tot = j.total_results ?? V.life.ents.length, shown = V.life.ents.length;
+    LIFE_OBSCURED = obscured;
+    setCount("life", shown < tot ? `${shown}／${tot}` : String(shown));
+  } catch (e) { setCount("life", "未受信"); }
+}
+
+/* ── カードの中身 ── */
+function openCard(d) {
+  if (d.type === "tree") {
+    const sec = TREE_SECTIONS[d.si], sci = SPECIES_SCI[d.sp];
+    showCard("樹木のレイヤ", COLORS.tree, esc(d.sp),
+      `${sci ? `<div class="kv"><span class="k2">学名</span><span><i>${esc(sci.sci)}</i>　${esc(sci.fam)}</span></div>` : ""}
+       <div class="kv"><span class="k2">幹周</span><span>約 ${d.gir.toFixed(2)} m（地上1.3m の幹の周長）</span></div>
+       <div class="kv"><span class="k2">樹高</span><span>約 ${d.h.toFixed(1)} m　<span style="color:var(--dim)">※目測の概数</span></span></div>
+       <div class="kv"><span class="k2">樹形</span><span>ランク ${d.shape + 1}　${esc(SHAPE_DEF[d.shape])}</span></div>
+       <div class="kv"><span class="k2">活力度</span><span>ランク ${d.vigor + 1}　${esc(VIGOR_DEF[d.vigor])}</span></div>
+       <div class="kv"><span class="k2">区間</span><span>${esc(d.sec)}</span></div>
+       <div class="kv"><span class="k2">足もと</span><span>この区間では <b>${sec.kotai}%</b> の木の根元が踏み固められている</span></div>
+       ${sci && sci.note ? `<p style="margin-top:8px;font-size:11px;color:var(--dim)">⚠️ ${esc(sci.note)}</p>` : ""}
+       <p style="margin-top:9px;font-size:11.5px;color:var(--dim)">この一本は、市の樹木調査の<b>区間ごとの本数・樹種構成・幹周・樹形・活力度の分布</b>から起こした
+       <b>概略の一本</b>。実測された個体そのものではない。参道には <b>697 本</b>（東 344／西 353）が数えられ、
+       うち <b>661 本</b>（伐採や低木を除いた分・2011年3月時点）について上の分布が整理されている。
+       調査の対象は<b>おおむね高さ 5m 以上</b>の樹木で、これ以外に数多くの中低木がある。</p>`,
+      `出典 ─ 氷川の杜まちづくり協議会 編／<a href="https://www.city.saitama.lg.jp/001/010/015/004/004/p014020.html" target="_blank" rel="noopener">さいたま市</a>『氷川参道の樹木調査』（令和4年3月改訂）／学名は GBIF Backbone`);
+  } else if (d.type === "bigtree") {
+    showCard("樹木のレイヤ｜巨木", "#b7f0cd",
+      `${esc(d.sp)}<span class="badge" style="color:${d.designated ? "#b7f0cd" : "var(--dim)"}">${d.designated ? "天然記念物" : "指定解除"}</span>`,
+      `<div class="kv"><span class="k2">樹木番号</span><span>${esc(d.id)}</span></div>
+       ${SPECIES_SCI[d.sp] ? `<div class="kv"><span class="k2">学名</span><span><i>${esc(SPECIES_SCI[d.sp].sci)}</i>　${esc(SPECIES_SCI[d.sp].fam)}</span></div>` : ""}
+       <div class="kv"><span class="k2">目通り</span><span><b>${d.mawari.toFixed(2)} m</b>（地上1.3m の幹周・実測）</span></div>
+       <div class="kv"><span class="k2">樹高</span><span>${d.h.toFixed(1)} m　<span style="color:var(--dim)">※目測の概数</span></span></div>
+       <div class="kv"><span class="k2">樹齢</span><span>資料に数値の記載なし</span></div>
+       <p style="margin-top:9px;font-size:11.5px;color:var(--dim)">目通りは市の調査の実測値。位置は樹木番号からの内挿（±30m 程度）。
+       市指定天然記念物「氷川参道の並木」は現在 <b>11 本</b>（当初は約 30 本）。</p>
+       <p style="margin-top:8px;font-size:11.5px;color:var(--dim)">⚠️ <b>樹齢について、資料は数値を出していない。</b>
+       21 本の巨木について「これらは<b>樹齢250年を超え、往年の杉並木時代以前からの生き残りとも考えられ</b>」（p.9）と
+       書かれているだけで、年輪の計測も植栽年からの逆算も、根拠は記されていない。
+       ${d.id === "W-244" ? "この一本（W-244 クスノキ）の個票には「<b>樹齢300年ぐらいか</b>」という観察メモがある。" : ""}
+       幹周から樹齢を割り出す式はあるが、資料にない数字をここで作ることはしない。</p>`,
+      `出典 ─ 『氷川参道の樹木調査』p.9 巨木リスト（<a href="https://www.city.saitama.lg.jp/001/010/015/004/004/p014020.html" target="_blank" rel="noopener">さいたま市</a>）／<a href="https://www.city.saitama.lg.jp/004/005/006/003/p001267_d/fil/bunkazaiitiran.pdf" target="_blank" rel="noopener">さいたま市指定文化財一覧</a>`);
+  } else if (d.type === "citytree") {
+    const t = d.t;
+    const attr = [];
+    if (t.sp) attr.push(`<div class="kv"><span class="k2">学名</span><span><i>${esc(t.sp)}</i></span></div>`);
+    if (t.n)  attr.push(`<div class="kv"><span class="k2">名</span><span>${esc(t.n)}</span></div>`);
+    if (t.d)  attr.push(`<div class="kv"><span class="k2">区分</span><span>${esc(DENOTATION_JA[t.d] || t.d)}</span></div>`);
+    if (t.lt) attr.push(`<div class="kv"><span class="k2">葉のかたち</span><span>${t.lt === "broadleaved" ? "広葉" : t.lt === "needleleaved" ? "針葉" : esc(t.lt)}</span></div>`);
+    if (t.lc) attr.push(`<div class="kv"><span class="k2">葉の周期</span><span>${t.lc === "deciduous" ? "落葉" : t.lc === "evergreen" ? "常緑" : esc(t.lc)}</span></div>`);
+    showCard("樹木のレイヤ｜街の木", "#8fd8ae",
+      t.n ? esc(t.n) : (t.d ? esc(DENOTATION_JA[t.d] || t.d) : "記録された一本"),
+      `${attr.join("")}
+       <p style="margin-top:9px;font-size:11.5px;color:var(--dim)">これは<b>誰かが地図に置いた一本</b>——
+       参道の 697 本（市の調査からの概略配置）とは出所が違う。${attr.length ? "" : "⚠️ この一本には樹種も大きさも記録がない。航空写真からの写し取りで、あるのは位置だけ。"}</p>`,
+      `位置 ─ © <a href="https://www.openstreetmap.org/node/${esc(t.id)}" target="_blank" rel="noopener">OpenStreetMap</a> contributors（ODbL）`);
+  } else if (d.type === "history") {
+    const ev = d.ev;
+    showCard("歴史のレイヤ", COLORS.hist,
+      `${esc(ev.t)}<span class="badge" style="color:${d.legend ? "#f0c19a" : COLORS.hist}">${esc(ev.k)}</span>`,
+      `<div class="kv"><span class="k2">とき</span><span><b>${esc(yearLabel(ev.y))}</b></span></div>
+       ${ev.b ? `<p style="margin-top:10px">${esc(ev.b)}</p>` : ""}
+       ${d.legend ? `<p style="margin-top:8px;font-size:11.5px;color:var(--dim)">社記・伝承として伝わる——史実として断定しない。</p>` : ""}
+       ${ev.w ? `<p style="margin-top:8px;font-size:11.5px;color:var(--dim)">⚠️ ${esc(ev.w)}</p>` : ""}
+       <p style="margin-top:8px;font-size:11px;color:var(--dim)">地図上の位置はおおよそ。</p>`,
+      `出典 ─ ${esc(ev.sn || "")}<br><a href="${esc(ev.u)}" target="_blank" rel="noopener">${esc(ev.u)}</a>`);
+  } else if (d.type === "culture") {
+    const c = d.c;
+    showCard("文化のレイヤ", COLORS.cult, `${esc(c.n)}<span class="badge" style="color:${COLORS.cult}">${esc(c.g)}</span>`,
+      `<p>${esc(c.d)}</p>`,
+      `出典 ─ <a href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.u)}</a>`);
+  } else if (d.type === "hall") {
+    showCard("文化のレイヤ｜社殿", COLORS.cult, `${esc(d.n)}<span class="badge" style="color:${COLORS.cult}">社殿</span>`,
+      `<p>${esc(d.d || "")}</p>
+       <p style="margin-top:8px;font-size:11.5px;color:var(--dim)">位置は OSM の実測。
+       <b>3D のかたちは、そこに社殿が建っていることを示すための象り</b>で、実測の形状ではない。
+       屋根の反りや組物、彩色の細部は表していない。この一画は 3D 都市モデルの建物を切り抜いて、
+       代わりにこの象りを置いている。</p>`,
+      `出典 ─ <a href="${esc(d.u)}" target="_blank" rel="noopener">${esc(d.u)}</a>`);
+  } else if (d.type === "torii") {
+    showCard("文化のレイヤ", COLORS.cult, `${esc(d.t.n)}<span class="badge" style="color:${COLORS.cult}">鳥居</span>`,
+      `<p>${esc(d.t.d)}</p>
+       <p style="margin-top:8px;font-size:11.5px;color:var(--dim)">位置は OSM の実測。
+       3D のかたちは<b>そこに鳥居が立っていることを示すための象り</b>で、実測の形状ではない。</p>`,
+      `位置 ─ © OpenStreetMap contributors（ODbL）`);
+  } else if (d.type === "sansha") {
+    showCard("文化のレイヤ｜氷川三社", COLORS.cult, esc(d.s.n),
+      `<p>${esc(d.s.d)}</p>
+       <p style="margin-top:8px">さいたま市の<b>武蔵一宮 氷川神社・中山神社・氷川女體神社</b>の三社は、
+       座標から算出すると<b>方位およそ 120° のほぼ一直線</b>に並ぶ（6.6km の直線に対する中山神社のずれは 0.9%）。</p>
+       <p style="margin-top:8px;font-size:11.5px;color:var(--dim)">⚠️ 並びが天文に合わせられたとする解釈は一次史料で確認できていないため、
+       線の意味は断定しない。光の柱は位置を示すための表現。</p>`,
+      `出典 ─ <a href="${esc(d.s.u)}" target="_blank" rel="noopener">${esc(d.s.u)}</a>`);
+  } else if (d.type === "minuma") {
+    showCard("文化のレイヤ", COLORS.cult, "見沼田んぼ",
+      `<p>さいたま市の公称で <b>約 1,260 ha</b>、うち約 95% が市内。縄文海進のころは海の入江で、江戸に溜井となり、
+       1727〜28 年の見沼代用水の開削で干拓された。氷川・中山・氷川女體の三社は、この沼を差し渡すように
+       <b>方位およそ 120°</b> のほぼ一直線に並ぶ（座標からの実測。中山神社のずれは 0.9%）。</p>
+       <p style="margin-top:8px;font-size:11.5px;color:var(--dim)">⚠️ 範囲のポリゴンは公開データに見あたらないため、点と方角で示している。
+       三社の直線の「意味」は一次史料で確認できていないので、断定しない。</p>`,
+      `出典 ─ <a href="https://www.city.saitama.lg.jp/006/014/009/005/p063460.html" target="_blank" rel="noopener">さいたま市 見沼田んぼ</a>｜三社の方位は座標からの算出`);
+  } else if (d.type === "inat") {
+    const o = d.o;
+    const name = (o.taxon && (o.taxon.preferred_common_name || o.taxon.name)) || "（未同定）";
+    const ph = (o.photos && o.photos[0]) || null;
+    const lic = ph && ph.license_code;   // null＝全権留保 → 写真は出さない
+    const img = (ph && lic) ? `<img src="${esc((ph.url || "").replace("square","medium"))}" alt="${esc(name)}"><span class="at">${esc(ph.attribution || lic)}</span>` : "";
+    const acc = o.public_positional_accuracy;
+    const sci = (o.taxon && o.taxon.name) || "";
+    const rank = { research:"研究等級", needs_id:"同定待ち", casual:"かじゅある" }[o.quality_grade] || o.quality_grade || "";
+    showCard("生きもののレイヤ", COLORS.life, esc(name),
+      `${sci ? `<div class="kv"><span class="k2">学名</span><span><i>${esc(sci)}</i></span></div>` : ""}
+       <div class="kv"><span class="k2">観察</span><span>${esc(o.observed_on || "日付なし")}</span></div>
+       <div class="kv"><span class="k2">同定</span><span>${esc(rank)}${o.quality_grade === "research" ? "（2 人以上が同じ同定に達した記録）" : ""}</span></div>
+       <div class="kv"><span class="k2">位置の精度</span><span>${acc == null ? "記録なし" : "±" + acc + " m"}</span></div>
+       ${img}
+       <p style="margin-top:9px;font-size:11.5px;color:var(--dim)">市民が撮って投稿した一件。<b>同定は投稿者と閲覧者の判断</b>で、
+       専門家の査定を経たものではない。${acc != null && acc > 300 ? "この記録は<b>位置の精度が粗い</b>（上の値）。点の場所そのものは信用しないほうがよい。" : ""}</p>`,
+      `記録 ─ <a href="https://www.inaturalist.org/observations/${esc(o.id)}" target="_blank" rel="noopener">iNaturalist #${esc(o.id)}</a>｜受信 ${stamp()}`);
+  }
+}
+
+/* ── 視点 ── */
+const CAMS = {
+  /* 起動の框（2026-08-28 上原さんの画面に合わせた）。
+     下辺が氷川だんご屋（35.9119）あたり、上辺が大宮公園駅（35.9238）の少し先に来る。
+     ＝参道の北端・杜・大宮公園が一枚に入る。 */
+  home:       { lon:139.6312, lat:35.8995, h:1350, heading:10,  pitch:-33 },
+  sando:      { lon:139.6303, lat:35.9000, h:1400, heading:8,   pitch:-34 },
+  ichinotorii:{ lon:139.6316, lat:35.8955, h:230,  heading:2,   pitch:-11 },
+  shrine:     { lon:139.6300, lat:35.9120, h:600,  heading:0,   pitch:-32 },
+  minuma:     { lon:139.6180, lat:35.9260, h:2600, heading:126, pitch:-24 },
+};
+function flyCam(key, dur) {
+  const c = CAMS[key]; if (!c || !viewer) return;
+  if (walking) exitWalkState();     // 歩行中に視点を押したら、まず歩行の状態を解く（操作が半端に固まらない）
+  flying = true;
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(c.lon, c.lat, c.h),
+    orientation: { heading: Cesium.Math.toRadians(c.heading), pitch: Cesium.Math.toRadians(c.pitch), roll: 0 },
+    duration: dur ?? 2.0,
+    complete: () => { flying = false; }, cancel: () => { flying = false; },
+  });
+}
+document.querySelectorAll("#hudCams .cbtn[data-cam]").forEach(b =>
+  b.addEventListener("click", () => flyCam(b.dataset.cam)));
+
+/* =====================================================================
+   現在地 ── ブラウザの位置情報を「この端末の中だけ」で使う。
+   ⚠️ 座標はどこへも送らない：外部 API に渡さない・URL に載せない・保存しない。
+      使うのは Cesium の描画（このページの中の 3D 空間）だけ。
+   ===================================================================== */
+let geoWatch = null, geoEnt = null, geoRing = null, geoPin = null;
+
+/* 現在地の印。ページの中で描き起こす（外部の画像を取りに行かない） */
+function pinImage() {
+  const W = 44, H = 58, k = 2, c = document.createElement("canvas");
+  c.width = W * k; c.height = H * k;
+  const g = c.getContext("2d"); g.scale(k, k);
+  const cx = 22, cy = 21, r = 15;
+  g.beginPath();
+  g.arc(cx, cy, r, Math.PI * 0.82, Math.PI * 0.18, false);
+  g.lineTo(cx, 55); g.closePath();
+  g.shadowColor = "rgba(0,0,0,0.55)"; g.shadowBlur = 9; g.shadowOffsetY = 2;
+  g.fillStyle = "rgba(255,255,255,0.96)"; g.fill();
+  g.shadowColor = "transparent";
+  g.lineWidth = 2; g.strokeStyle = "rgba(8,22,30,0.85)"; g.stroke();
+  g.beginPath(); g.arc(cx, cy, 5.4, 0, Math.PI * 2); g.fillStyle = "#0a1b24"; g.fill();
+  return c.toDataURL("image/png");
+}
+let PIN = null;
+const geoTx = t => { const el = $("geoTx"); if (el) el.textContent = t; };
+
+function geoOff(msg) {
+  if (geoWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(geoWatch);
+  geoWatch = null;
+  for (const e of [geoEnt, geoRing, geoPin]) if (e) viewer.entities.remove(e);
+  geoEnt = geoRing = geoPin = null;
+  $("geoBtn").setAttribute("aria-pressed", "false");
+  geoTx(msg || "現在地");
+}
+function geoOn() {
+  if (!viewer) return;
+  if (!navigator.geolocation) { geoTx("現在地：非対応"); return; }
+  $("geoBtn").setAttribute("aria-pressed", "true");
+  geoTx("現在地：確認中");
+  if (!PIN) PIN = pinImage();
+  geoWatch = navigator.geolocation.watchPosition(pos => {
+    try {
+      const { latitude:lat, longitude:lon, accuracy:acc } = pos.coords;   /* ← この関数の外へ出さない */
+      const p = Cesium.Cartesian3.fromDegrees(lon, lat, 4);
+      const rad = Math.max(acc, 8);
+      if (!geoPin) {
+        geoPin = viewer.entities.add({
+          position: p,
+          billboard: { image: PIN, width: 22, height: 29,
+                       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                       scaleByDistance: new Cesium.NearFarScalar(300, 1.3, 20000, 0.55),
+                       disableDepthTestDistance: Number.POSITIVE_INFINITY },
+          label: { text: "いまいるところ", font: "600 12px sans-serif", fillColor: Cesium.Color.WHITE,
+                   showBackground: true, backgroundColor: Cesium.Color.fromCssColorString("rgba(3,8,12,0.62)"),
+                   pixelOffset: new Cesium.Cartesian2(0, -38), disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                   scaleByDistance: new Cesium.NearFarScalar(600, 1.0, 9000, 0.0) },
+        });
+        geoEnt = viewer.entities.add({
+          position: p,
+          point: { pixelSize: 7, color: Cesium.Color.WHITE,
+                   outlineColor: Cesium.Color.fromCssColorString("rgba(255,255,255,0.28)"), outlineWidth: 7,
+                   disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        });
+        geoRing = viewer.entities.add({
+          position: p,
+          ellipse: { semiMajorAxis: rad, semiMinorAxis: rad, height: 2,
+                     material: Cesium.Color.WHITE.withAlpha(0.09),
+                     outline: true, outlineColor: Cesium.Color.WHITE.withAlpha(0.35) },
+        });
+        flying = true;
+        viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat - 0.004, 700),
+          orientation: { heading: 0, pitch: Cesium.Math.toRadians(-40), roll: 0 }, duration: 2.0,
+          complete: () => { flying = false; }, cancel: () => { flying = false; } });
+      } else {
+        geoPin.position = p; geoEnt.position = p; geoRing.position = p;
+        geoRing.ellipse.semiMajorAxis = rad; geoRing.ellipse.semiMinorAxis = rad;
+      }
+      geoTx(`現在地 ±${Math.round(acc)}m`);
+    } catch (_) { geoOff("現在地：描けず"); }
+  }, err => {
+    if (err.code === 3) { geoTx("現在地：探しています"); return; }   /* 時間切れは監視を続ける */
+    geoOff(err.code === 1 ? "現在地：許可なし" : "現在地：取れず");
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+}
+$("geoBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  if (geoWatch !== null) geoOff(); else geoOn();
+});
+/* 頁を離れるときに監視を残さない */
+window.addEventListener("pagehide", () => { if (geoWatch !== null) geoOff(); });
+
+/* =====================================================================
+   歩く（一人称）── 3D の中へ入り込む。五つのレイヤは入っても見えつづける
+   （点は disableDepthTestDistance で常に手前に描かれる設計）。
+   ===================================================================== */
+let walking = false, walkReady = false, walkSaved = null, flying = false;
+const keys = Object.create(null);
+const clearKeys = () => { for (const k in keys) keys[k] = false; };
+/* 押下は歩行前でも記録する（歩き始める前から Shift を押していても効く） */
+window.addEventListener("keydown", e => {
+  keys[e.code] = true;
+  if (walking && ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","Enter"].includes(e.code)) e.preventDefault();
+});
+window.addEventListener("keyup", e => { keys[e.code] = false; });
+/* 窓の外へ出たときに押しっぱなしが残ると、戻ってきたとき勝手に進んでしまう */
+window.addEventListener("blur", clearKeys);
+document.addEventListener("visibilitychange", () => { if (document.hidden) clearKeys(); });
+
+/* 受信の状態表示を、歩行の案内と重ならない高さへ逃がす（案内の高さは折り返しで変わるので実測する） */
+function placeBoot() {
+  const b = $("hudBoot"), w = $("walkHud");
+  if (!b) return;
+  const base = window.innerWidth <= 860 ? 10 : 18;
+  b.style.bottom = (walking && w && w.style.display === "block")
+    ? (base + w.offsetHeight + 8) + "px" : base + "px";
+}
+window.addEventListener("resize", placeBoot);
+
+/* 歩行の「状態」だけを解く（カメラは動かさない）。視点プリセットからも呼ぶ */
+function exitWalkState() {
+  walking = false; walkReady = false; clearKeys();
+  const ctl = viewer.scene.screenSpaceCameraController;
+  ctl.enableTranslate = true; ctl.enableZoom = true;
+  $("walkBtn").setAttribute("aria-pressed", "false");
+  $("walkTx").textContent = "歩く（一人称）";
+  $("walkHud").style.display = "none";
+  document.body.classList.remove("walking");
+  placeBoot();
+}
+
+function setWalk(on) {
+  if (!viewer) return;
+  const ctl = viewer.scene.screenSpaceCameraController;
+  if (!on) {
+    exitWalkState();
+    if (walkSaved) {
+      flying = true;
+      viewer.camera.flyTo({ destination: walkSaved.dest,
+        orientation: { heading: walkSaved.h, pitch: walkSaved.p, roll: walkSaved.r }, duration: 2.0,
+        complete: () => { flying = false; }, cancel: () => { flying = false; } });
+    } else flyCam("sando");
+    return;
+  }
+  /* 入る：飛行中でなく、じゅうぶん高いところに居るときだけ「戻り先」を覚える
+     （降下の途中で押し直すと、地表すれすれが戻り先になって二度と俯瞰へ戻れなくなる） */
+  const camH = viewer.camera.positionCartographic.height;
+  if (!flying && !walking && camH > 100) {
+    walkSaved = { dest: viewer.camera.position.clone(),
+                  h: viewer.camera.heading, p: viewer.camera.pitch, r: viewer.camera.roll };
+  }
+  walking = true; walkReady = false; clearKeys();
+  $("walkBtn").setAttribute("aria-pressed", "true");
+  $("walkTx").textContent = "俯瞰へ戻る";
+  $("walkHud").style.display = "block";
+  document.body.classList.add("walking");
+  placeBoot();
+  ctl.enableCollisionDetection = false;
+  /* 参道のなか（二の鳥居の南）へ降りて、目の高さで北を向く */
+  const g = alongSando(1300);
+  const eye = 1.6;                    // 平らな地球なので、目の高さはそのまま 1.6m
+  flying = true;
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(g.lon, g.lat, eye),
+    orientation: { heading: Cesium.Math.toRadians(3), pitch: Cesium.Math.toRadians(-2), roll: 0 },
+    duration: 2.2,
+    complete: () => { flying = false;
+      if (!walking) return;                                  /* 降下中に解かれていたら何もしない */
+      ctl.enableTilt = true; ctl.enableTranslate = false; ctl.enableZoom = false; walkReady = true; },
+    cancel: () => { flying = false; },
+  });
+}
+$("walkBtn").addEventListener("click", e => { e.currentTarget.blur(); setWalk(!walking); });
+
+/* 歩みの更新（毎フレーム） */
+function installWalkLoop() {
+  let last = Date.now();
+  viewer.clock.onTick.addEventListener(() => {
+    const now = Date.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!walking || !walkReady) return;   // 飛行中は動かさない（着地アニメと喧嘩させない）
+    const fast = keys["ShiftLeft"] || keys["ShiftRight"];
+    const v = (fast ? 14 : 4.5) * dt * 60;    // 歩く / 走る
+    const cam = viewer.camera;
+    if (keys["KeyW"] || keys["ArrowUp"])    cam.moveForward(v);
+    if (keys["KeyS"] || keys["ArrowDown"])  cam.moveBackward(v);
+    if (keys["KeyA"] || keys["ArrowLeft"])  cam.moveLeft(v);
+    if (keys["KeyD"] || keys["ArrowRight"]) cam.moveRight(v);
+    if (keys["KeyQ"]) cam.moveDown(v * 0.6);
+    if (keys["KeyE"]) cam.moveUp(v * 0.6);
+    /* 地面より下へ潜らない・空へ飛ばない（目の高さのあたりに保つ） */
+    const c = Cesium.Cartographic.fromCartesian(cam.position);
+    if (c.height < 1.2 || c.height > 60) {
+      cam.position = Cesium.Cartesian3.fromRadians(
+        c.longitude, c.latitude, Math.min(60, Math.max(1.2, c.height)));
+    }
+  });
+}
+
+$("playBtn").addEventListener("click", e => {
+  e.currentTarget.blur();
+  pulseOn = !pulseOn;
+  $("playTx").textContent = pulseOn ? "重奏 ▮▮" : "重奏 ▶";
+  $("playBtn").setAttribute("aria-pressed", String(pulseOn));
+});
+
+boot();
+</script>
+</body>
+</html>
