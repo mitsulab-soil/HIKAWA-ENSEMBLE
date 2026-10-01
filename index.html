@@ -73,6 +73,10 @@
   #card .close:hover{color:var(--ink)}
   #card img{max-width:190px;border-radius:7px;display:block;margin:9px 0 3px}
   #card .at{font-family:var(--mono);font-size:8.5px;color:var(--dim)}
+  #card .at a{color:inherit}
+  #card .nophoto{margin-top:8px;padding:8px 10px;border:1px dashed rgba(255,255,255,.18);border-radius:6px;
+    font-size:11.5px;line-height:1.7;color:var(--dim)}
+  #card .nophoto a{color:inherit}
   .badge{display:inline-block;font-family:var(--mono);font-size:9px;border:1px solid currentColor;border-radius:3px;
          padding:1px 7px;margin-left:8px;vertical-align:2px;opacity:.85}
   .kv{display:flex;gap:8px;border-bottom:1px dotted var(--line-soft);padding:3px 0;font-size:12.5px}
@@ -146,6 +150,55 @@
     #hudBoot{left:10px;right:118px;bottom:10px;max-width:none;font-size:9px;padding:6px 11px}
     body.walking #hudBoot{bottom:58px}
   }
+  /* ── スマホ（≤700px）は別設計：地図が主役（2026-08-30 上原さん指示で再設計） ──
+     「カードが多くて肝心の 3D 地図が見えない」への答え。
+     ・題は上の小さな帯ひとつ。
+     ・レイヤと視点は、下に重ねた**細い二段の帯**（横になぞって選ぶ）。
+     ・カードは下から出る**引き出し**（高さ最大 40vh・地図は常に上に見えている）。
+     ・図の語（レイヤ名・本数）は間引かない。小さくして全部出す。 */
+  @media (max-width:700px){
+    #hudLeft{display:contents}
+    #hudTitle{position:fixed;left:10px;top:10px;z-index:22;width:auto;
+              padding:6px 12px;display:flex;align-items:baseline;gap:9px}
+    #hudTitle h1{font-size:14.5px;letter-spacing:.2em}
+    #hudTitle .en{display:none}
+    #hudTitle .by{margin:0;padding:0;border:none;font-size:8px}
+
+    /* 下段＝五つのレイヤ（横帯） */
+    #hudVoices{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:23;
+               height:calc(44px + env(safe-area-inset-bottom));
+               flex-direction:row;align-items:center;gap:2px;
+               padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+               border-radius:0;border-left:none;border-right:none;border-bottom:none;
+               overflow-x:auto;scrollbar-width:none}
+    #hudVoices::-webkit-scrollbar{display:none}
+    /* ⚠️ 基底に「#hudVoices .hd{display:flex}」が**この節より後ろ**にあり、同特異度だと負ける。
+       #hudLeft を重ねて特異度で勝つ（display:contents でも DOM 上の祖先なので効く）。 */
+    #hudLeft #hudVoices .hd{display:none}
+    .voice{flex:none;font-size:11px;padding:5px 8px;gap:6px}
+    .voice .n{font-size:8px;margin-left:0;padding-left:4px}
+
+    /* 上段＝視点（横帯・なぞって選ぶ） */
+    #hudCams{left:0;right:0;top:auto;bottom:calc(44px + env(safe-area-inset-bottom));z-index:23;max-height:none;
+             flex-direction:row;align-items:center;gap:4px;padding:6px 8px;
+             border-radius:0;border-left:none;border-right:none;
+             overflow-x:auto;scrollbar-width:none}
+    #hudCams::-webkit-scrollbar{display:none}
+    #hudCams .hd{display:none}
+    #hudCams .sep{width:1px;height:20px;margin:0 3px;flex:none;background:var(--line-soft)}
+    .cbtn{flex:none;font-size:11px;padding:6px 11px;letter-spacing:.08em}
+    .cbtn.small{font-size:9.5px;padding:5px 9px}
+
+    /* カード＝下からの引き出し。地図は常にその上に見えている */
+    #card{position:fixed;left:6px;right:6px;bottom:96px;z-index:24;
+          max-height:40vh;margin:0;border-radius:14px}
+    #card h3{font-size:15px}
+    #card .body{font-size:12px}
+
+    #walkHud{left:8px;right:8px;bottom:100px;transform:none}
+    #hudBoot{left:8px;right:8px;bottom:100px;max-width:none}
+    body.walking #hudBoot{bottom:148px}
+  }
   @media (max-width:860px) and (max-height:700px){
     #card{max-height:26vh}
     #hudVoices{gap:1px}
@@ -190,7 +243,7 @@
   <div id="hudTitle" class="glass">
     <h1>氷川重奏</h1>
     <div class="en">HIKAWA ENSEMBLE</div>
-    <div class="by">by mitsulab　·　v5.1</div>
+    <div class="by">by mitsulab　·　v5.4</div>
   </div>
 
   <div id="hudVoices" class="glass">
@@ -233,7 +286,7 @@
     <li>・<b>建物</b>｜出典：3D都市モデル（Project PLATEAU）さいたま市（2025年度）（<a href="https://www.geospatial.jp/ckan/dataset/plateau-11100-saitama-shi-2025" target="_blank" rel="noopener">国土交通省</a>）を加工して作成。ストリーミング配信は実験的提供。⚠️ 地面を平らな球としているため、建物全体を <b>50m 押し下げて</b>その上に載せている（地表標高およそ 14m ＋ この一帯のジオイド高およそ 39m）。<b>建物どうしの高さの差は原データのまま</b>で、上下に動かしただけである。</li>
     <li>・<b>樹木</b>｜『氷川参道の樹木調査』（氷川の杜まちづくり協議会 編／<a href="https://www.city.saitama.lg.jp/001/010/015/004/004/p014020.html" target="_blank" rel="noopener">さいたま市</a> 発行・令和4年3月改訂）の本数・樹種構成・区間別集計・巨木個票にもとづく。<b>1 本ずつの実測位置ではなく、区間ごとの本数と樹種比から起こした概略配置</b>（巨木 21 本は樹木番号から軸上距離を内挿・±30m 程度）。⚠️ <b>百分率の母数は 661 本</b>——697 は調査した延べ本数で、そのうち伐採や低木を除いた 661 本について 2011 年 3 月時点の樹種・幹周・樹高・樹形・活力度が整理されている。<b>樹高は目測の概数</b>（三角測量したのはサンプル樹木のみ）。調査対象は<b>おおむね高さ 5m 以上</b>で、参道にはこのほかに数多くの中低木がある。学名は <a href="https://www.gbif.org/" target="_blank" rel="noopener">GBIF Backbone Taxonomy</a>（CC BY 4.0）の現行の受容名。天然記念物「氷川参道の並木」11 本＝<a href="https://www.city.saitama.lg.jp/004/005/006/003/p001267_d/fil/bunkazaiitiran.pdf" target="_blank" rel="noopener">さいたま市指定文化財一覧</a>。<br>
       <b>街の木</b>｜大宮区に <b>OSM で一本ずつ記録された樹木</b> 109 本（2026-08-28 に Overpass API で実測。参道の軸の内側にある無属性のノードは、697 本と二重に数えないよう外した）。© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>（ODbL）。⚠️ ほとんどが航空写真からの写し取りで、<b>樹種や大きさの記録を持たない</b>。持っているものだけをカードに出している。</li>
-    <li>・<b>生きもの</b>｜観察記録と写真：<a href="https://www.inaturalist.org/" target="_blank" rel="noopener">iNaturalist</a> の投稿者のみなさん（写真はレコードごとのライセンス表示に従う）。<b>飼育・栽培の記録は除いている</b>——この範囲には大宮公園小動物園が入るため、除かないと飼育個体が「杜の生きもの」として立ってしまう。範囲は<b>大宮区の全域</b>（OSM relation 1766993 の外接矩形・35.8877〜35.9258N／139.5956〜139.6496E。<b>Overpass API</b> で実測）。表示は新しい順に最大 400 件（1 頁 200 件を 2 回、1 秒あけて受ける）で、数字は「表示件数／該当総数」。2026-08-28 時点の該当総数は 452 件・242 種。<br>
+    <li>・<b>生きもの</b>｜観察記録と写真：<a href="https://www.inaturalist.org/" target="_blank" rel="noopener">iNaturalist</a> の投稿者のみなさん。<b>写真は CC0・CC BY・CC BY-SA のものだけ出している</b>（2026-09-07〜）。写真の下に、作者・ライセンス名（本文へのリンク）・iNaturalist の写真の頁を出している── iNaturalist の投稿写真は既定が <b>CC BY-NC</b>（非商用）で、この連作は「収益化してよいデータだけを使う」方針だから。<b>記録そのもの</b>（種名・日付・座標・精度）は事実の集まりなので、全件を地図に立てている。<span id="lifePhoto"></span>。<b>飼育・栽培の記録は除いている</b>——この範囲には大宮公園小動物園が入るため、除かないと飼育個体が「杜の生きもの」として立ってしまう。範囲は<b>大宮区の全域</b>（OSM relation 1766993 の外接矩形・35.8877〜35.9258N／139.5956〜139.6496E。<b>Overpass API</b> で実測）。表示は新しい順に最大 400 件（1 頁 200 件を 2 回、1 秒あけて受ける）で、数字は「表示件数／該当総数」。2026-08-28 時点の該当総数は 452 件・242 種。<br>
       ⚠️ <b>そのうち 54 件は、iNaturalist が位置をぼかしている記録</b>（希少種などを守るため、公開される座標が約 <b>28.6km 四方</b>に丸められる）。ぼかされた点を地図に置くと「そこに居た」という嘘になるので、<b>地図には出していない</b>。各記録の位置の精度はカードに出している。<br>
       ⚠️ 同定は投稿者と閲覧者の判断によるもので、専門家の査定を経たものではない。「研究等級」は 2 人以上が同じ同定に達した記録という意味。</li>
     <li>・<b>歴史</b>｜37 件それぞれに<b>出典の機関名とリンク</b>を付し、2〜4 文の解説を一次資料から起こした（2026-08-28 に全 URL の応答を実測）。<b>社伝・社記は「伝承」の記で示し、史実として断定しない。</b>照合の過程で当方の記述の誤りが見つかったものは、カードの ⚠️ に何をどう直したかを書いた（見沼通船堀 1728→<b>1731年</b>／伝・約2400年前→<b>伝・孝昭天皇3年</b>（神社の数えでは約2500年前）／大宮駅「地元の誘致運動」は学術的に見直し中／氷川公園「県内初の県営公園」→県の公式の言い方は「県営公園の中では最も長い歴史を持つ公園」／天然記念物の当初本数は資料により 29〜30 本で食い違う ほか）。<b>一次記載を確認できなかったものは書かない</b>——寿能の丸木舟・櫂・木道、大宮工場の開設月日と職員数、新都心の「5月5日」と「大宮操車場跡地」は、そのため落としてある。</li>
@@ -246,7 +299,7 @@
     <li>・<b>氷川三社の線</b>｜氷川神社・中山神社・氷川女體神社の座標から算出（方位約 120°・中山神社のずれ 0.9%）。⚠️ 天文との対応を説く解釈は一次史料を確認できていないため、線の意味は断定しない。</li>
     <li>・<b>地球儀と 3D の描画</b>｜<a href="https://cesium.com/platform/cesiumjs/" target="_blank" rel="noopener">CesiumJS</a>（Apache-2.0）。</li>
   </ul>
-  <div class="credit">《氷川重奏》v5.1 ── mitsulab 知覚アプリ連作・第二作（2026-08-28）　<a href="#" id="srcClose">とじる</a></div>
+  <div class="credit">《氷川重奏》v5.4 ── mitsulab 知覚アプリ連作・第二作（2026-08-28）　<a href="#" id="srcClose">とじる</a></div>
 </div></div>
 
 <script>
@@ -281,7 +334,9 @@ const SANDO = [
   [139.63070,35.91214,13.0],[139.63066,35.91287,13.2],[139.63060,35.91360,13.7],[139.63054,35.91432,14.0],
   [139.63047,35.91505,13.8],
 ];
-const SANDO_LEN = 1942;
+/* 折れ線の実長（25 点を測って 1929.9m）。⚠️ s は「折れ線の先頭からの距離」であって
+   「一の鳥居からの距離」ではない。一の鳥居は s=35.6m にある（下の TREE_SECTIONS を参照）。 */
+const SANDO_LEN = 1929.9;
 
 /* ── 氷川神社 社殿域・大宮公園（OSM 実測・[lon, lat]） ── */
 const KEIDAI = [[139.62997,35.91723],[139.62917,35.91693],[139.62915,35.91688],[139.62958,35.91617],
@@ -303,12 +358,25 @@ const OMIYA_PARK = [[139.63216,35.92025],[139.63161,35.92104],[139.62861,35.9223
 const TREE_SECTIONS = [
   /* half＝中心線からの横のふり幅（m）。中央公道 6m から導いた ±4.5m。
      区間3 は都市緑地として多種を植えた区間で、資料どおり ±5〜11m にばらつかせる（直線に並べない）。
-     区間4 の終端は実測長 511.9m を採って 1907m（三の鳥居の 35m 手前で並木は終わる）。
-     kotai＝根元が踏み固められている樹木の割合（p.11）。 */
-  { name:"一の鳥居〜南大通り",           s0:0,    s1:350,  east:59,  west:70,  keyaki:0.756, half:4.5, spread:1.6, kotai:65 },
-  { name:"南大通り〜大宮中央通り",       s0:350,  s1:1061, east:124, west:115, keyaki:0.703, half:4.5, spread:1.6, kotai:53 },
-  { name:"大宮中央通り〜さいたま春日部線", s0:1061, s1:1395, east:60,  west:56,  keyaki:0.333, half:8.0, spread:6.0, kotai:17 },
-  { name:"さいたま春日部線〜三の鳥居",     s0:1395, s1:1907, east:101, west:112, keyaki:0.620, half:4.5, spread:1.6, kotai:94 },
+     kotai＝根元が踏み固められている樹木の割合（p.11）。
+
+     ⚠️⚠️ 軸の原点の取り違え（2026-08-30 修正）──「歩いたら樹木が間違っている」の正体。
+     s は SANDO 折れ線の**先頭**からの距離である。ところが折れ線の先頭は OSM の参道ウェイの南端で、
+     **一の鳥居はそこから 35.6m 北**にある（_dev/一次調査_重奏_2026-08-27.md に
+     「先頭点 s=−35.5 m」と書かれていたのに、実装に反映されていなかった）。
+     そのため区間を 0/350/1061/1395/1907 と置いた結果、**697 本すべてが 23〜34m 南へずれ**、
+     交差点の手前 30m ほどでは一つ南の区間の名と踏み固め率が出て、
+     十数本は一の鳥居より南（＝調査の範囲外）に立っていた。
+     ここでは境を**実測し直した値**に置く（折れ線に投影して測定）：
+       一の鳥居 35.6 ／ 南大通り 377.4 ／ 大宮中央通り 1088.6 ／ 三の鳥居 1929.9（＝折れ線の端）
+     さいたま春日部線だけは交差点を実測できなかったので、大宮中央通りから資料の区間長 334.1m を
+     足した推定値 1422.7 を使う（※推定であることを明示する）。
+     この置き換えで区間長は 341.8／711.2／334.1／507.3 となり、資料の 350／711／334／512 と
+     いずれも 8m 以内で一致する＝折れ線と資料は元から整合していて、ずれていたのは原点だけだった。 */
+  { name:"一の鳥居〜南大通り",           s0:35.6,   s1:377.4,  east:59,  west:70,  keyaki:0.756, half:4.5, spread:1.6, kotai:65 },
+  { name:"南大通り〜大宮中央通り",       s0:377.4,  s1:1088.6, east:124, west:115, keyaki:0.703, half:4.5, spread:1.6, kotai:53 },
+  { name:"大宮中央通り〜さいたま春日部線", s0:1088.6, s1:1422.7, east:60,  west:56,  keyaki:0.333, half:8.0, spread:6.0, kotai:17 },
+  { name:"さいたま春日部線〜三の鳥居",     s0:1422.7, s1:1929.9, east:101, west:112, keyaki:0.620, half:4.5, spread:1.6, kotai:94 },
 ];
 const TREE_TOTAL = TREE_SECTIONS.reduce((a, x) => a + x.east + x.west, 0);   // ＝697（巨木 21 本はこの内数）
 const TREE_BASE  = 661;   // 百分率の母数（2011年3月時点・伐採や低木を除いた本数）
@@ -1198,7 +1266,9 @@ async function boot() {
        切ると全タイルが一斉にブラウザへ流れ、同じ配信元への行列で
        **手前に要る一枚が後回しになる**（実測：最初の地図まで 10〜16 秒）。
        既定に戻すと、近いタイルから順に取りに行く。 */
-    sc.globe.maximumScreenSpaceError = 2.5;   // 既定 2 よりわずかに粗く＝タイル数を約 3 割減
+    /* スマホは電池と体感を優先して、タイルをもう一段だけ粗くする（見た目の差は小さい） */
+    const SMALL_SCREEN = Math.min(innerWidth, innerHeight) <= 700;
+    sc.globe.maximumScreenSpaceError = SMALL_SCREEN ? 3.2 : 2.5;   // 既定 2 よりわずかに粗く
     sc.globe.preloadSiblings = false;         // 隣のタイルを先読みしない
 
     /* 画像レイヤは一枚だけ。v2《氷川参道の積層》と同じ見え方 */
@@ -1249,7 +1319,7 @@ async function boot() {
     });
 
     /* ② 建物（PLATEAU）は待たずに走らせる。届いた順に画面へ足す */
-    Cesium.Cesium3DTileset.fromUrl(CFG.tileset, { maximumScreenSpaceError: 32, skipLevelOfDetail: true })
+    Cesium.Cesium3DTileset.fromUrl(CFG.tileset, { maximumScreenSpaceError: SMALL_SCREEN ? 44 : 32, skipLevelOfDetail: true })
       .then(ts => {
         const c = Cesium.Cartographic.fromCartesian(ts.boundingSphere.center);
         const a = Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, 0);
@@ -1432,26 +1502,14 @@ function buildStations() {
 
 /* ── 樹木のレイヤ ── */
 /* 割合の表から一つ引く（％の配列・合計 100 前後） */
-function pickIndex(pct) {
-  let r = rnd() * pct.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < pct.length; i++) { r -= pct[i]; if (r <= 0) return i; }
-  return pct.length - 1;
-}
-function speciesFor(si) { return SPECIES_NAMES[pickIndex(SPECIES_BY_SECTION[si])]; }
-function girthFor(si) {
-  const k = pickIndex(GIRTH_BY_SECTION[si]), [lo, hi] = GIRTH_CLASSES[k];
-  return { m: lo + rnd() * (hi - lo), cls: k };
-}
-/* 樹高。⚠️ 資料の樹高は**目測の概数**（三角測量はサンプル樹木のみ・p.2）。
-   ここではその分布から引いている（原典の平均 13.3m。この階級の取り方だと期待値は約 14.0m）。 */
-function sampleHeight() {
-  const r = rnd();
-  if (r < 0.053) return 3 + rnd() * 2;
-  if (r < 0.272) return 5 + rnd() * 5;
-  if (r < 0.575) return 10 + rnd() * 5;
-  if (r < 0.808) return 15 + rnd() * 5;
-  return 20 + rnd() * 5;
-}
+/* ⚠️⚠️ v5.4（2026-08-31 上原さん決定「正しい情報のみを表示」）
+   かつては一本ごとに樹種・幹周・樹高・樹形・活力度を**区間の分布から無作為に引いて**
+   持たせていた。統計としては原典に忠実だが、**個体としては架空**であり、実地で見比べると
+   約 1/4 の木で樹種が食い違う（区間1 のケヤキ率 75.6% の裏返し）。
+   これは腹話術の禁止に反するのでやめた。
+   概略点はいまや**「この区間に n 本」という事実の一本ぶんの目印**であり、
+   個体の属性は持たない。個体の実測値を持つのは巨木 21 本と OSM の街の木だけ。
+   speciesFor / girthFor / sampleHeight は撤去（履歴は _dev/旧ver/v5.3_樹木改修前.html）。 */
 /* 樹木番号 → 軸上距離（区間内で線形内挿・±30m 程度の誤差） */
 function numToS(side, num) {
   for (const [a, b, si] of NUM_RANGE[side]) {
@@ -1482,10 +1540,8 @@ function buildTrees() {
         const p = alongSando(s);
         const off = sign * (sec.half + (rnd() - 0.5) * (sec.spread ?? 1.6));
         const [lon, lat] = offsetLL(p, off);
-        const sp = speciesFor(si), h = sampleHeight(), gir = girthFor(si);
-        const shape = pickIndex(SHAPE_BY_SECTION[si]), vigor = pickIndex(VIGOR_BY_SECTION[si]);
         const e = ent.add({
-          position: Cesium.Cartesian3.fromDegrees(lon, lat, 2 + h * 0.12),
+          position: Cesium.Cartesian3.fromDegrees(lon, lat, 3.2),
           /* 透けさせない。樹高は「点の大きさ」で示し、色は一定に保つ（薄い個体を作らない） */
           point: { pixelSize: PULSE.tree, color: Cesium.Color.fromCssColorString(COLORS.tree).withAlpha(0.95),
                    outlineColor: Cesium.Color.fromCssColorString("rgba(127,211,154,0.22)"), outlineWidth: 4,
@@ -1493,7 +1549,7 @@ function buildTrees() {
                    disableDepthTestDistance: Number.POSITIVE_INFINITY },
           show: voiceOn("tree"),
         });
-        e._d = { type:"tree", sp, h, gir: gir.m, shape, vigor, si, sec: sec.name };
+        e._d = { type:"tree", si, sec: sec.name, side };
         V.tree.ents.push(e);
       }
     }
@@ -1587,7 +1643,8 @@ function buildCulture() {
 }
 
 /* ── 生きもののレイヤ（iNaturalist） ── */
-let LIFE_OBSCURED = 0;   // 位置をぼかされていて地図に出せなかった記録の数
+let LIFE_OBSCURED = 0;
+let LIFE_PHOTO = { ok:0, nc:0, rr:0, none:0 };   // 写真のライセンスの内訳（2026-09-07〜）   // 位置をぼかされていて地図に出せなかった記録の数
 async function loadInat() {
   setCount("life", "受信中");
   try {
@@ -1621,6 +1678,20 @@ async function loadInat() {
       e._d = { type:"inat", o };
       V.life.ents.push(e);
     }
+    /* 写真のライセンスの内訳も数えておく（画面の出どころに出す） */
+    LIFE_PHOTO = { ok: 0, nc: 0, rr: 0, none: 0 };
+    for (const o of rows) {
+      const p0 = (o.photos && o.photos[0]) || null;
+      if (!p0) { LIFE_PHOTO.none++; continue; }
+      const lc = p0.license_code ? String(p0.license_code).toLowerCase() : null;
+      if (!lc) LIFE_PHOTO.rr++;
+      else if (["cc0","cc-by","cc-by-sa"].indexOf(lc) >= 0) LIFE_PHOTO.ok++;
+      else LIFE_PHOTO.nc++;
+    }
+    const lp = document.getElementById("lifePhoto");
+    if (lp) lp.innerHTML = `受信した ${rows.length} 件のうち、<b>写真を出せるのは ${LIFE_PHOTO.ok} 件</b>` +
+      `（CC0・CC BY・CC BY-SA）。${LIFE_PHOTO.nc} 件は CC BY-NC などの非商用・改変禁止、` +
+      `${LIFE_PHOTO.rr} 件は全権留保で、どちらも出していない（記録そのものは全件立てている）。`;
     /* 描いた数と該当総数が違うときは、両方を出す（届いた値を素通しする） */
     const tot = j.total_results ?? V.life.ents.length, shown = V.life.ents.length;
     LIFE_OBSCURED = obscured;
@@ -1631,21 +1702,24 @@ async function loadInat() {
 /* ── カードの中身 ── */
 function openCard(d) {
   if (d.type === "tree") {
-    const sec = TREE_SECTIONS[d.si], sci = SPECIES_SCI[d.sp];
-    showCard("樹木のレイヤ", COLORS.tree, esc(d.sp),
-      `${sci ? `<div class="kv"><span class="k2">学名</span><span><i>${esc(sci.sci)}</i>　${esc(sci.fam)}</span></div>` : ""}
-       <div class="kv"><span class="k2">幹周</span><span>約 ${d.gir.toFixed(2)} m（地上1.3m の幹の周長）</span></div>
-       <div class="kv"><span class="k2">樹高</span><span>約 ${d.h.toFixed(1)} m　<span style="color:var(--dim)">※目測の概数</span></span></div>
-       <div class="kv"><span class="k2">樹形</span><span>ランク ${d.shape + 1}　${esc(SHAPE_DEF[d.shape])}</span></div>
-       <div class="kv"><span class="k2">活力度</span><span>ランク ${d.vigor + 1}　${esc(VIGOR_DEF[d.vigor])}</span></div>
-       <div class="kv"><span class="k2">区間</span><span>${esc(d.sec)}</span></div>
+    /* ⚠️ この点は個体ではない。出すのは**区間の実測統計だけ**（v5.4・正しい情報のみ） */
+    const si = d.si, sec = TREE_SECTIONS[si];
+    const sp = SPECIES_BY_SECTION[si].map((v, i) => [SPECIES_NAMES[i], v])
+                 .filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+    const gir = GIRTH_BY_SECTION[si].map((v, i) => [GIRTH_CLASSES[i], v]);
+    const bar = p => `<span style="display:inline-block;height:7px;border-radius:3px;background:${COLORS.tree};opacity:.75;width:${Math.max(2, p * 1.4)}px;vertical-align:middle"></span>`;
+    showCard("樹木のレイヤ｜並木の区間", COLORS.tree, esc(d.sec),
+      `<div class="kv"><span class="k2">本数</span><span><b>${sec.east + sec.west} 本</b>（東 ${sec.east}／西 ${sec.west}・2010年3月 調査完了時）</span></div>
+       <div class="kv"><span class="k2">樹種構成</span><span>${sp.map(([n, v]) => `${bar(v)} ${esc(n)} ${v}%`).join("<br>")}</span></div>
+       <div class="kv"><span class="k2">幹周</span><span>${gir.map(([c, v]) => `${bar(v)} ${c[0]}〜${c[1]}m ${v}%`).join("<br>")}<br><span style="color:var(--dim);font-size:11px">（地上1.3m の幹の周長・区間の分布）</span></span></div>
+       <div class="kv"><span class="k2">樹形</span><span>${SHAPE_BY_SECTION[si].map((v, i) => `ランク${i + 1}: ${v}%`).join("　")}</span></div>
+       <div class="kv"><span class="k2">活力度</span><span>${VIGOR_BY_SECTION[si].map((v, i) => `ランク${i + 1}: ${v}%`).join("　")}</span></div>
        <div class="kv"><span class="k2">足もと</span><span>この区間では <b>${sec.kotai}%</b> の木の根元が踏み固められている</span></div>
-       ${sci && sci.note ? `<p style="margin-top:8px;font-size:11px;color:var(--dim)">⚠️ ${esc(sci.note)}</p>` : ""}
-       <p style="margin-top:9px;font-size:11.5px;color:var(--dim)">この一本は、市の樹木調査の<b>区間ごとの本数・樹種構成・幹周・樹形・活力度の分布</b>から起こした
-       <b>概略の一本</b>。実測された個体そのものではない。参道には <b>697 本</b>（東 344／西 353）が数えられ、
-       うち <b>661 本</b>（伐採や低木を除いた分・2011年3月時点）について上の分布が整理されている。
-       調査の対象は<b>おおむね高さ 5m 以上</b>の樹木で、これ以外に数多くの中低木がある。</p>`,
-      `出典 ─ 氷川の杜まちづくり協議会 編／<a href="https://www.city.saitama.lg.jp/001/010/015/004/004/p014020.html" target="_blank" rel="noopener">さいたま市</a>『氷川参道の樹木調査』（令和4年3月改訂）／学名は GBIF Backbone`);
+       <p style="margin-top:9px;font-size:11.5px;color:var(--dim)">⚠️ この点は<b>個体ではない</b>。市の樹木調査の「この区間に ${sec.east + sec.west} 本」という
+       実測にもとづく<b>一本ぶんの目印</b>で、位置は概略。上の数字はすべて<b>区間の実測統計</b>（百分率の母数は
+       伐採・低木を除いた 661 本・2011年3月時点）。<b>個体の実測値を持つのは、巨木 21 本（白い大きな点）と
+       OSM の街の木だけ</b>。</p>`,
+      `出典 ─ 氷川の杜まちづくり協議会 編／<a href="https://www.city.saitama.lg.jp/001/010/015/004/004/p014020.html" target="_blank" rel="noopener">さいたま市</a>『氷川参道の樹木調査』（令和4年3月改訂）`);
   } else if (d.type === "bigtree") {
     showCard("樹木のレイヤ｜巨木", "#b7f0cd",
       `${esc(d.sp)}<span class="badge" style="color:${d.designated ? "#b7f0cd" : "var(--dim)"}">${d.designated ? "天然記念物" : "指定解除"}</span>`,
@@ -1655,7 +1729,10 @@ function openCard(d) {
        <div class="kv"><span class="k2">樹高</span><span>${d.h.toFixed(1)} m　<span style="color:var(--dim)">※目測の概数</span></span></div>
        <div class="kv"><span class="k2">樹齢</span><span>資料に数値の記載なし</span></div>
        <p style="margin-top:9px;font-size:11.5px;color:var(--dim)">目通りは市の調査の実測値。位置は樹木番号からの内挿（±30m 程度）。
-       市指定天然記念物「氷川参道の並木」は現在 <b>11 本</b>（当初は約 30 本）。</p>
+       市指定天然記念物「氷川参道の並木」は現在 <b>11 本</b>。
+       <b>平成 4 年当時は 29 本</b>あった（『氷川参道の樹木調査』p.1・p.9）。
+       ⚠️ 別の市の文書『氷川参道のまちづくり』は「当初は古木 30 本」と書いており、数字が食い違う。
+       昭和 50 年の指定当時の本数は、この二つからは確定できない。</p>
        <p style="margin-top:8px;font-size:11.5px;color:var(--dim)">⚠️ <b>樹齢について、資料は数値を出していない。</b>
        21 本の巨木について「これらは<b>樹齢250年を超え、往年の杉並木時代以前からの生き残りとも考えられ</b>」（p.9）と
        書かれているだけで、年輪の計測も植栽年からの逆算も、根拠は記されていない。
@@ -1724,9 +1801,30 @@ function openCard(d) {
   } else if (d.type === "inat") {
     const o = d.o;
     const name = (o.taxon && (o.taxon.preferred_common_name || o.taxon.name)) || "（未同定）";
+    /* ⚠️ 写真は「商用にも使える許可のものだけ」出す（2026-09-07）。
+       iNaturalist の投稿写真は**既定が CC BY-NC**（非商用）で、この範囲では 405 枚中 365 枚が
+       NC か ND だった（実測 2026-09-07・463 件）。連作は「収益化してよいデータだけを使う」方針
+       （データ源の台帳）なので、NC・ND の写真は出さない。**記録そのもの**（種名・日付・座標・精度）は
+       事実の集まりなので、これまでどおり全件を地図に立てる。 */
+    const OKLIC = ["cc0", "cc-by", "cc-by-sa"];
     const ph = (o.photos && o.photos[0]) || null;
-    const lic = ph && ph.license_code;   // null＝全権留保 → 写真は出さない
-    const img = (ph && lic) ? `<img src="${esc((ph.url || "").replace("square","medium"))}" alt="${esc(name)}"><span class="at">${esc(ph.attribution || lic)}</span>` : "";
+    const lic = ph && ph.license_code;   // null＝全権留保
+    const okPhoto = !!(ph && lic && OKLIC.indexOf(String(lic).toLowerCase()) >= 0);
+    /* ライセンス本文へのリンク（2026-10-01）。版は iNaturalist 自身が付けている版に合わせる
+       （inaturalist/inaturalist の app/models/shared/license_module.rb：CC_VERSION="4.0"・CC0_VERSION="1.0"）。
+       作者＝attribution、出どころ＝iNaturalist の写真の頁、ライセンス名＝本文へのリンク、の三つを並べる。 */
+    const LIC_URL = { "cc0":"https://creativecommons.org/publicdomain/zero/1.0/deed.ja",
+                      "cc-by":"https://creativecommons.org/licenses/by/4.0/deed.ja",
+                      "cc-by-sa":"https://creativecommons.org/licenses/by-sa/4.0/deed.ja" };
+    const lcl = lic ? String(lic).toLowerCase() : "";
+    const img = okPhoto
+      ? `<img src="${esc((ph.url || "").replace("square","medium"))}" alt="${esc(name)}"><span class="at">${esc(ph.attribution || lic)}　` +
+        `<a href="${LIC_URL[lcl]}" target="_blank" rel="noopener license"><b>${esc(String(lic).toUpperCase())}</b></a>` +
+        `${ph.id ? `　<a href="https://www.inaturalist.org/photos/${esc(ph.id)}" target="_blank" rel="noopener">写真の出どころ</a>` : ""}` +
+        `${lcl === "cc-by" || lcl === "cc-by-sa" ? "　改変なし" : ""}</span>`
+      : (ph ? `<div class="nophoto">写真はここに出していない ── この一枚は<b>${lic ? esc(String(lic).toUpperCase()) : "全権留保"}</b>で、
+              この連作が使うと決めている許可（CC0・CC BY・CC BY-SA）の外にある。
+              <a href="https://www.inaturalist.org/observations/${esc(o.id)}" target="_blank" rel="noopener">iNaturalist で見る →</a></div>` : "");
     const acc = o.public_positional_accuracy;
     const sci = (o.taxon && o.taxon.name) || "";
     const rank = { research:"研究等級", needs_id:"同定待ち", casual:"かじゅある" }[o.quality_grade] || o.quality_grade || "";
@@ -1925,7 +2023,7 @@ function setWalk(on) {
   placeBoot();
   ctl.enableCollisionDetection = false;
   /* 参道のなか（二の鳥居の南）へ降りて、目の高さで北を向く */
-  const g = alongSando(1300);
+  const g = alongSando(1240);        // 二の鳥居（軸上 1282m）の少し南
   const eye = 1.6;                    // 平らな地球なので、目の高さはそのまま 1.6m
   flying = true;
   viewer.camera.flyTo({
